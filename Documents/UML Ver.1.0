@@ -1,0 +1,322 @@
+
+@startuml
+' ========= Packages =========
+package "Domain" {
+  class User {
+    - id : long
+    - username : String
+    - passwordHash : String
+    - email : String
+    - favoriteGenre : String
+    - createdAt : Instant
+    --
+    +getId() : long
+    +getUsername() : String
+    +getEmail() : String
+    +getFavoriteGenre() : String
+  }
+
+  enum MediaType {
+    MOVIE;
+   SERIES;
+   GAME }
+
+  class Media {
+    - id : long
+    - title : String
+    - description : String
+    - type : MediaType
+    - releaseYear : int
+    - genres : List<String>
+    - ageRestriction : int
+    - creatorUserId : long
+    - averageScore : double
+    --
+    +getId() : long
+    +getTitle() : String
+    +getAverageScore() : double
+  }
+
+  class Rating {
+    - id : long
+    - mediaId : long
+    - userId : long
+    - stars : int
+    - comment : String
+    - commentConfirmed : boolean
+    - createdAt : Instant
+    - likeCount : int
+    --
+    +getId() : long
+    +getStars() : int
+    +isCommentConfirmed() : boolean
+  }
+}
+
+package "DTO" {
+  class UserCredentials {
+    +username : String
+    +password : String
+  }
+  class UserProfileUpdate {
+    +email : String
+    +favoriteGenre : String
+  }
+  class MediaInput {
+    +title : String
+    +description : String
+    +mediaType : String
+    +releaseYear : Integer
+    +genres : List<String>
+    +ageRestriction : Integer
+  }
+  class RatingInput {
+    +stars : Integer
+    +comment : String
+  }
+}
+
+package "Persistence (JDBC)" {
+  class DataSourceProvider {
+    - url : String
+    - user : String
+    - pass : String
+    --
+    +get() : Connection
+  }
+
+  class UserRepository {
+    - dsp : DataSourceProvider
+    --
+    +create(username:String, passwordHash:String) : User
+    +findByUsername(username:String) : Optional<User>
+    +findById(id:long) : Optional<User>
+    +updateProfile(id:long, email:String, favoriteGenre:String) : void
+    +stats(userId:long) : Map<String,Object>
+  }
+
+  class MediaRepository {
+    - dsp : DataSourceProvider
+    --
+    +create(m:Media) : Media
+    +findById(id:long) : Optional<Media>
+    +update(m:Media, actorUserId:long) : void
+    +delete(id:long, actorUserId:long) : void
+    +search(q:Map<String,String>) : List<Media>
+    +recomputeAverage(mediaId:long) : void
+  }
+
+  class RatingRepository {
+    - dsp : DataSourceProvider
+    --
+    +create(r:Rating) : Rating
+    +findById(id:long) : Optional<Rating>
+    +update(ratingId:long, actorUserId:long, stars:int, comment:String) : void
+    +delete(ratingId:long, actorUserId:long) : void
+    +like(ratingId:long, actorUserId:long) : void
+    +confirmComment(ratingId:long, actorUserId:long) : void
+    +history(userId:long) : List<Rating>
+  }
+
+  class FavoriteRepository {
+    - dsp : DataSourceProvider
+    --
+    +mark(mediaId:long, userId:long) : void
+    +unmark(mediaId:long, userId:long) : void
+    +listByUser(userId:long) : List<Long>
+  }
+}
+
+package "Service" {
+  class UserService {
+    - users : UserRepository
+    - tokens : TokenManager
+    --
+    +register(username:String, password:String) : User
+    +login(username:String, password:String) : String
+    +getProfile(userId:long) : User
+    +updateProfile(userId:long, dto:UserProfileUpdate) : void
+    +getStats(userId:long) : Map<String,Object>
+  }
+
+  class MediaService {
+    - repo : MediaRepository
+    - users : UserRepository
+    --
+    +create(authorUsername:String, dto:MediaInput) : Media
+    +getById(id:long) : Media
+    +update(id:long, actorUsername:String, dto:MediaInput) : Media
+    +delete(id:long, actorUsername:String) : void
+    +search(params:Map<String,String>) : List<Media>
+  }
+
+  class RatingService {
+    - repo : RatingRepository
+    - mediaRepo : MediaRepository
+    - users : UserRepository
+    --
+    +rate(mediaId:long, actorUsername:String, dto:RatingInput) : Rating
+    +update(ratingId:long, actorUsername:String, dto:RatingInput) : Rating
+    +delete(ratingId:long, actorUsername:String) : void
+    +like(ratingId:long, actorUsername:String) : void
+    +confirm(ratingId:long, actorUsername:String) : void
+    +history(userId:long) : List<Rating>
+  }
+
+  class FavoriteService {
+    - repo : FavoriteRepository
+    - users : UserRepository
+    --
+    +mark(mediaId:long, actorUsername:String) : void
+    +unmark(mediaId:long, actorUsername:String) : void
+    +listByUser(userId:long) : List<Long>
+  }
+
+  class RecommendationService {
+    - media : MediaRepository
+    - ratings : RatingRepository
+    --
+    +byGenre(userId:long) : List<Media>
+    +byContent(userId:long) : List<Media>
+  }
+
+  class LeaderboardService {
+    - ratings : RatingRepository
+    --
+    +mostActive(limit:int) : List<Map<String,Object>>
+  }
+}
+
+package "Security" {
+  class TokenManager {
+    - store : Map<String,TokenInfo>
+    --
+    +issueToken(username:String) : String
+    +validate(token:String) : String
+  }
+  class AuthService {
+    - tokens : TokenManager
+    --
+    +userFromAuthHeader(header:String) : String
+  }
+}
+
+package "HTTP" {
+  class Router {
+    - routes : List<Route>
+    --
+    +add(method:String, regex:String, handler) : void
+    +handle(exchange) : void
+  }
+  class AuthFilter {
+    - auth : AuthService
+    --
+    +doFilter(exchange, chain) : void
+  }
+  class UserHandler {
+    - svc : UserService
+    --
+    +register(exchange, matcher) : void
+    +login(exchange, matcher) : void
+    +getProfile(exchange, matcher) : void
+    +updateProfile(exchange, matcher) : void
+    +getRatings(exchange, matcher) : void
+    +getFavorites(exchange, matcher) : void
+  }
+  class MediaHandler {
+    - svc : MediaService
+    --
+    +create(exchange, matcher) : void
+    +search(exchange, matcher) : void
+    +getById(exchange, matcher) : void
+    +update(exchange, matcher) : void
+    +delete(exchange, matcher) : void
+  }
+  class RatingHandler {
+    - svc : RatingService
+    --
+    +rateMedia(exchange, matcher) : void
+    +update(exchange, matcher) : void
+    +delete(exchange, matcher) : void
+    +like(exchange, matcher) : void
+    +confirmComment(exchange, matcher) : void
+  }
+  class FavoriteHandler {
+    - svc : FavoriteService
+    --
+    +mark(exchange, matcher) : void
+    +unmark(exchange, matcher) : void
+  }
+  class LeaderboardHandler {
+    - svc : LeaderboardService
+    --
+    +get(exchange, matcher) : void
+  }
+  class RecommendationHandler {
+    - svc : RecommendationService
+    --
+    +getRecommendations(exchange, matcher) : void
+  }
+}
+
+' ========= Relationships =========
+User "1" --> "*" Rating : writes
+Media "1" --> "*" Rating : has
+User "1" --> "*" Media : creates
+User "1" --> "*" "Favorite (via table)" : marks
+Media "1" <-- "*" "Favorite (via table)"
+
+UserService --> UserRepository
+MediaService --> MediaRepository
+MediaService --> UserRepository
+RatingService --> RatingRepository
+RatingService --> MediaRepository
+RatingService --> UserRepository
+FavoriteService --> FavoriteRepository
+FavoriteService --> UserRepository
+RecommendationService --> MediaRepository
+RecommendationService --> RatingRepository
+LeaderboardService --> RatingRepository
+
+UserHandler --> UserService
+MediaHandler --> MediaService
+RatingHandler --> RatingService
+FavoriteHandler --> FavoriteService
+RecommendationHandler --> RecommendationService
+LeaderboardHandler --> LeaderboardService
+
+AuthFilter ..> AuthService
+Router ..> UserHandler
+Router ..> MediaHandler
+Router ..> RatingHandler
+Router ..> FavoriteHandler
+Router ..> RecommendationHandler
+Router ..> LeaderboardHandler
+
+UserRepository --> DataSourceProvider
+MediaRepository --> DataSourceProvider
+RatingRepository --> DataSourceProvider
+FavoriteRepository --> DataSourceProvider
+
+' ========= Legend =========
+legend left
+  <b>Legende</b>
+  == Pakete ==
+  <b>Domain</b>: Kernobjekte (User, Media, Rating, Enums)
+  <b>DTO</b>: Datentransfer-Objekte für Request/Response
+  <b>Persistence</b>: JDBC-Repositories + DB-Zugriff
+  <b>Service</b>: Geschäftslogik / Use-Cases
+  <b>Security</b>: Authentifizierung + Token-Verwaltung
+  <b>HTTP</b>: Router, Filter, Handler – Entry-Points für REST-API
+
+  == Pfeile ==
+  →  (solide): direkter Methodenaufruf / Abhängigkeit
+  ..> (gestrichelt): Nutzung (z. B. Auth-Check, indirekt)
+  *--: Komposition (Repository besitzt DataSourceProvider)
+
+  == Beziehungen ==
+  User → Rating: 1 User kann mehrere Ratings erstellen
+  Media → Rating: 1 Media hat mehrere Ratings
+  Favorite (via table): M:N Beziehung User ↔ Media
+endlegend
+@enduml
