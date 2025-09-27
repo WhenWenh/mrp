@@ -1,16 +1,14 @@
 package com.mrp.app.domain;
 
-import java.awt.*;
-
 //Art des Mediums --> Movie, Series, Game
 
-public enum mediaType {
+public enum MediaType {
     MOVIE, SERIES, GAME;
 
-    public static mediaType fromString(String s){
+    public static MediaType fromString(String s){
         if(s == null){
             throw new IllegalArgumentException("MediaType cannot be null");
         }
-        return mediaType.valueOf(s.trim().toUpperCase());
+        return MediaType.valueOf(s.trim().toUpperCase());
     }
 }
