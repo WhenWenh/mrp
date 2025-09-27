@@ -1,4 +1,4 @@
-package com.mrp.app.domain;
+package mrp.domain.model;
 
 //Art des Mediums --> Movie, Series, Game
 

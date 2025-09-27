@@ -1,4 +1,4 @@
-package com.mrp.app.domain;
+package mrp.domain.model;
 
 import java.util.ArrayList;
 import java.util.Collections;
