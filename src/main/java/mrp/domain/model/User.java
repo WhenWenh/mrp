@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 public class User {
+
     private UUID id;
     private String username;
     private String passwordHash;
@@ -12,26 +13,37 @@ public class User {
     private String favoriteGenre;
     private Instant createdAt;
 
-    public User() { } // für Jackson/JDBC
+    public User() { }
 
-    public User(UUID id, String username, String passwordHash, String email,
-                String favoriteGenre, Instant createdAt) {
-        this.id = id;
-        this.username = username;
-        this.passwordHash = passwordHash;
-        this.email = email;
-        this.favoriteGenre = favoriteGenre;
-        this.createdAt = createdAt;
+    public User(UUID id,
+                String username,
+                String passwordHash,
+                String email,
+                String favoriteGenre,
+                Instant createdAt) {
+        setId(id);
+        setUsername(username);
+        setPasswordHash(passwordHash);
+        setEmail(email);
+        setFavoriteGenre(favoriteGenre);
+        setCreatedAt(createdAt);
+    }
+
+    public static User newUser(UUID id, String username, String passwordHash) {
+        return new User(id, username, passwordHash, null, null, Instant.now());
     }
 
     public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public void setId(UUID id) {
+        if (id == null) throw new IllegalArgumentException("id must not be null");
+        this.id = id;
+    }
 
     public String getUsername() { return username; }
     public void setUsername(String username) {
         if (username == null || username.isBlank())
             throw new IllegalArgumentException("username blank");
-        this.username = username;
+        this.username = username.trim();
     }
 
     public String getPasswordHash() { return passwordHash; }
@@ -42,13 +54,23 @@ public class User {
     }
 
     public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public void setEmail(String email) {
+        if (email == null || email.isBlank()) {
+            this.email = null;
+        } else {
+            this.email = email.trim().toLowerCase();
+        }
+    }
 
     public String getFavoriteGenre() { return favoriteGenre; }
-    public void setFavoriteGenre(String favoriteGenre) { this.favoriteGenre = favoriteGenre; }
+    public void setFavoriteGenre(String favoriteGenre) {
+        this.favoriteGenre = favoriteGenre == null ? null : favoriteGenre.trim();
+    }
 
     public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt == null ? Instant.now() : createdAt;
+    }
 
     @Override public boolean equals(Object o) {
         if (this == o) return true;
@@ -58,6 +80,6 @@ public class User {
     @Override public int hashCode() { return Objects.hash(id); }
 
     @Override public String toString() {
-        return "User{id=%s, username='%s'}".formatted(id, username);
+        return "User{id=" + id + ", username='" + username + "'}";
     }
 }
