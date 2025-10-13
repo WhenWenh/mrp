@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16
+    container_name: mrp_db
+    environment:
+      POSTGRES_DB: mrp
+      POSTGRES_USER: mrp
+      POSTGRES_PASSWORD: mrp
+    ports:
+      - "5432:5432"
+    volumes:
+      - mrp_pg_data:/var/lib/postgresql/data
+      - ./db/migration:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mrp -d mrp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  mrp_pg_data:
