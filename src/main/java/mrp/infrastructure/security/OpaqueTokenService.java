@@ -3,6 +3,7 @@ package mrp.infrastructure.security;
 import mrp.domain.ports.AuthTokenService;
 import mrp.infrastructure.config.ConnectionFactory;
 //import com.github.f4b6a3.uuid.UuidCreator;
+import mrp.infrastructure.util.UUIDv7;
 
 import java.security.SecureRandom;
 import java.sql.*;
@@ -26,7 +27,7 @@ public class OpaqueTokenService implements AuthTokenService {
         String opaquePart = newOpaquePart(); // z. B. 32 random bytes → Base64URL
         String token = username + "-mrp" + opaquePart;
 
-        UUID jti = UUID.randomUUID();
+        UUID jti = UUIDv7.randomUUID();
         Instant now = Instant.now();
         Instant exp = now.plus(TTL);
 

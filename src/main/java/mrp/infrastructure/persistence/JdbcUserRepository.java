@@ -4,7 +4,9 @@ import mrp.domain.model.User;
 import mrp.domain.ports.UserRepository;
 import mrp.infrastructure.config.ConnectionFactory;
 //import com.github.f4b6a3.uuid.UuidCreator;
+import mrp.infrastructure.util.UUIDv7;
 
+//TODO: Prepare-Statements -->
 
 import java.sql.*;
 import java.time.Instant;
@@ -15,7 +17,7 @@ public class JdbcUserRepository implements UserRepository {
 
     @Override
     public User create(String username, String passwordHash) {
-        UUID id = UUID.randomUUID();
+        UUID id = UUIDv7.randomUUID();
         Instant now = Instant.now();
         String sql = "INSERT INTO users (id, username, password_hash, created_at) VALUES (?,?,?,?)";
         try (Connection c = ConnectionFactory.get();
