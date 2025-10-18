@@ -5,7 +5,7 @@ public enum MediaType {
     SERIES,
     GAME;
 
-    public static MediaType from(String s) {
+    public MediaType from(String s) {
         if (s == null) return null;
         return MediaType.valueOf(s.trim().toUpperCase());
     }

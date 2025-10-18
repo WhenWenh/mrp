@@ -85,7 +85,7 @@ public class Router {
         os.flush();
     }
 
-    private static class Route {
+    private class Route {
         String method;
         Pattern pattern;
         RouteHandler handler;

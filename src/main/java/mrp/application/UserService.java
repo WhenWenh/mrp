@@ -50,13 +50,13 @@ public class UserService {
 
         Optional<User> userOpt = users.findByUsername(username);
         if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("invalid username or password");
+            throw new SecurityException("invalid username or password");
         }
 
         User u = userOpt.get();
         String hash = PasswordHasher.sha256(rawPassword);
         if (!hash.equals(u.getPasswordHash())) {
-            throw new IllegalArgumentException("invalid username or password");
+            throw new SecurityException("invalid username or password");
         }
 
         return tokens.issueToken(u.getId(), u.getUsername());

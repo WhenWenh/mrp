@@ -29,7 +29,7 @@ public class User {
         setCreatedAt(createdAt);
     }
 
-    public static User newUser(UUID id, String username, String passwordHash) {
+    public User newUser(UUID id, String username, String passwordHash) {
         return new User(id, username, passwordHash, null, null, Instant.now());
     }
 

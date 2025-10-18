@@ -16,6 +16,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 
 //TODO Tokens sollen geupdated werden nach jedem login kein neuer insert
+//TODO Einzelne Exceptions für verschiedene Fehlertypen werfen und auffangen
 
 public class UserHandler implements RouteHandler {
 
@@ -62,6 +63,10 @@ public class UserHandler implements RouteHandler {
             byte[] json = MAPPER.writeValueAsBytes(new TokenResponse(token));
             sendJson(ex, 200, json);
         } catch (IllegalArgumentException e) {
+            // aus validateCredentials -> 400
+            sendText(ex, 400, e.getMessage()); // "username blank" / "password blank"
+        } catch (SecurityException e) {
+            // falsche Credentials -> 401
             sendText(ex, 401, "invalid credentials");
         }
     }
