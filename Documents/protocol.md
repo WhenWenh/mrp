@@ -185,8 +185,8 @@ resources/
 
 - **GitHub:** [https://github.com/WhenWenh/mrp](https://github.com/WhenWenh/mrp)
 ### 9.1 Versionierung
-- Zwischenabgabe 1: Git Tag `v1.0-intermediate`
-- Aktive Entwicklung: Branch `develop`
+- Zwischenabgabe 1: Git Tag `v1.0-intermediate`.
+- Aktive Entwicklung: Branch `develop`.
 ---
 
 ## 10. Ausblick auf Final-Abgabe
