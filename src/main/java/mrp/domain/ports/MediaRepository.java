@@ -7,28 +7,44 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Minimaler Port für Media – für Zwischenabgabe 1 noch nicht genutzt,
- * aber als Vertragsanker für SOLID/Layering bereits vorhanden.
+ * Port für die Persistenz von MediaEntry.
+ * Die Application-Schicht hängt nur von diesem Interface.
  */
 public interface MediaRepository {
 
-    default MediaEntry create(MediaEntry entry) {
-        throw new UnsupportedOperationException("not implemented");
-    }
+    MediaEntry save(MediaEntry entry);
 
-    default Optional<MediaEntry> findById(UUID id) {
-        return Optional.empty();
-    }
+    Optional<MediaEntry> findById(UUID id);
 
-    default List<MediaEntry> search(String query) {
-        return List.of();
-    }
+    /**
+     * @return true, wenn genau 1 Datensatz aktualisiert wurde.
+     */
+    boolean update(MediaEntry entry);
 
-    default void update(MediaEntry entry, UUID actorUserId) {
-        throw new UnsupportedOperationException("not implemented");
-    }
+    /**
+     * @return true, wenn genau 1 Datensatz gelöscht wurde.
+     */
+    boolean delete(UUID id);
 
-    default void delete(UUID id, UUID actorUserId) {
-        throw new UnsupportedOperationException("not implemented");
-    }
+    /**
+     * Einfache Such- und Filterfunktion mit Pagination.
+     * sortBy: "title" | "year" | "created"
+     * sortDir: "asc" | "desc"
+     */
+    List<MediaEntry> search(
+            String query,
+            String mediaType,
+            Integer yearFrom,
+            Integer yearTo,
+            Integer ageMax,
+            String sortBy,
+            String sortDir,
+            int limit,
+            int offset
+    );
+
+    /**
+     * Ownership-Check: darf der Nutzer den Datensatz bearbeiten/löschen?
+     */
+    boolean isOwner(UUID mediaId, UUID userId);
 }
