@@ -4,6 +4,7 @@ import mrp.application.security.PasswordHasher;
 import mrp.domain.model.User;
 import mrp.domain.ports.AuthTokenService;
 import mrp.domain.ports.UserRepository;
+import mrp.dto.TokenResponse;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -29,6 +30,8 @@ public class UserService {
      * @throws IllegalStateException wenn Username bereits existiert
      * @throws IllegalArgumentException bei ungültigen Eingaben
      */
+
+
     public User register(String username, String rawPassword) {
         validateCredentials(username, rawPassword);
 
@@ -45,6 +48,9 @@ public class UserService {
      * Login mit Username/Password – liefert ein Bearer-Token.
      * @throws IllegalArgumentException bei ungültigen Credentials
      */
+
+
+
     public String login(String username, String rawPassword) {
         validateCredentials(username, rawPassword);
 

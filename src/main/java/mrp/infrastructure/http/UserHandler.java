@@ -17,6 +17,7 @@ import java.util.regex.Matcher;
 
 //TODO Tokens sollen geupdated werden nach jedem login kein neuer insert
 //TODO Einzelne Exceptions für verschiedene Fehlertypen werfen und auffangen
+//TODO Passwort wiedergeben aber mit ****, id ausgeben
 
 public class UserHandler implements RouteHandler {
 
