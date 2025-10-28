@@ -31,17 +31,7 @@ public interface MediaRepository {
      * sortBy: "title" | "year" | "created"
      * sortDir: "asc" | "desc"
      */
-    List<MediaEntry> search(
-            String query,
-            String mediaType,
-            Integer yearFrom,
-            Integer yearTo,
-            Integer ageMax,
-            String sortBy,
-            String sortDir,
-            int limit,
-            int offset
-    );
+    List<MediaEntry> search(MediaSearch search);
 
     /**
      * Ownership-Check: darf der Nutzer den Datensatz bearbeiten/löschen?
