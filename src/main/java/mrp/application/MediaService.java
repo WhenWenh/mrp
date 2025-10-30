@@ -23,7 +23,6 @@ public class MediaService {
         this.repo = repo;
     }
 
-    // CREATE
     public MediaResponse create(UUID creatorId, MediaRequest req) {
         if (creatorId == null) throw new IllegalArgumentException("creatorId null");
         validateRequest(req);
@@ -62,7 +61,6 @@ public class MediaService {
         if (!repo.isOwner(id, requesterId)) throw new SecurityException("forbidden: not the creator");
 
         MediaEntry current = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("media not found"));
-
         current.setTitle(safeTrim(req.getTitle()));
         current.setDescription(req.getDescription());
         current.setMediaType(req.getMediaType());
@@ -84,15 +82,6 @@ public class MediaService {
 
     public List<MediaResponse> search(MediaSearch s) {
         if (s == null) s = new MediaSearch(null, null, null, null, null, "created", "desc", 20, 0);
-        if (s.getSortBy() == null || s.getSortBy().isBlank()) s = new MediaSearch(
-                s.getQuery(), s.getMediaType(), s.getYearFrom(), s.getYearTo(), s.getAgeMax(),
-                "created", s.getSortDir(), s.getLimit(), s.getOffset()
-        );
-        if (s.getSortDir() == null || s.getSortDir().isBlank()) s = new MediaSearch(
-                s.getQuery(), s.getMediaType(), s.getYearFrom(), s.getYearTo(), s.getAgeMax(),
-                s.getSortBy(), "desc", s.getLimit(), s.getOffset()
-        );
-
         List<MediaEntry> list = repo.search(s);
         List<MediaResponse> out = new ArrayList<>();
         for (MediaEntry e : list) out.add(toResponse(e));
@@ -102,14 +91,19 @@ public class MediaService {
     private void validateRequest(MediaRequest req) {
         if (req == null) throw new IllegalArgumentException("request null");
         if (req.getTitle() == null || req.getTitle().trim().isEmpty()) throw new IllegalArgumentException("title blank");
-        if (req.getMediaType() == null) throw new IllegalArgumentException("mediaType null");
+        MediaType mt = req.getMediaType();
+        if (mt == null) throw new IllegalArgumentException("mediaType null");
         Integer year = req.getReleaseYear();
         if (year != null && (year < 1888 || year > 2100)) throw new IllegalArgumentException("releaseYear out of range");
         Integer age = req.getAgeRestriction();
         if (age != null && (age < 0 || age > 21)) throw new IllegalArgumentException("ageRestriction out of range");
     }
 
-    private String safeTrim(String s) { if (s == null) return null; String t = s.trim(); return t.isEmpty() ? null : t; }
+    private String safeTrim(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
 
     private MediaResponse toResponse(MediaEntry e) {
         return new MediaResponse(

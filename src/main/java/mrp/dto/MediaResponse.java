@@ -1,7 +1,6 @@
 package mrp.dto;
 
 import mrp.domain.model.enums.MediaType;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -19,18 +18,9 @@ public class MediaResponse {
     private Instant createdAt;
     private Instant updatedAt;
 
-    public MediaResponse(UUID id,
-                         UUID creatorId,
-                         String title,
-                         String description,
-                         MediaType mediaType,
-                         Integer releaseYear,
-                         List<String> genres,
-                         Integer ageRestriction,
-                         Double averageScore,
-                         Instant createdAt,
-                         Instant updatedAt) {
-
+    public MediaResponse(UUID id, UUID creatorId, String title, String description, MediaType mediaType,
+                         Integer releaseYear, List<String> genres, Integer ageRestriction,
+                         Double averageScore, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.creatorId = creatorId;
         this.title = title;

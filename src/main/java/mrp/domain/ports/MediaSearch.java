@@ -6,20 +6,13 @@ public class MediaSearch {
     private Integer yearFrom;
     private Integer yearTo;
     private Integer ageMax;
-    private String sortBy;   // "title" | "year" | "created"
-    private String sortDir;  // "asc" | "desc"
+    private String sortBy;  // "title" | "year" | "created"
+    private String sortDir; // "asc" | "desc"
     private int limit;
     private int offset;
 
-    public MediaSearch(String query,
-                       String mediaType,
-                       Integer yearFrom,
-                       Integer yearTo,
-                       Integer ageMax,
-                       String sortBy,
-                       String sortDir,
-                       int limit,
-                       int offset) {
+    public MediaSearch(String query, String mediaType, Integer yearFrom, Integer yearTo, Integer ageMax,
+                       String sortBy, String sortDir, int limit, int offset) {
         this.query = query;
         this.mediaType = mediaType;
         this.yearFrom = yearFrom;

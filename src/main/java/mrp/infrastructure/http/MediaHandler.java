@@ -1,17 +1,13 @@
 package mrp.infrastructure.http;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpExchange;
 import mrp.application.MediaService;
 import mrp.dto.MediaRequest;
-import mrp.dto.MediaResponse;
-import mrp.domain.ports.MediaSearch;
 import mrp.infrastructure.security.AuthService;
-import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
-import java.util.*;
 import java.util.UUID;
 
 public class MediaHandler {
@@ -29,12 +25,13 @@ public class MediaHandler {
         this.auth = auth;
     }
 
-    // POST /media
     public void create(HttpExchange ex) throws IOException {
-        var userId = auth.requireUserId(ex); // <— kurz & klar
+        String ct = ex.getRequestHeaders().getFirst("Content-Type");
+        if (ct == null || !ct.toLowerCase().contains("application/json")) { sendError(ex, 415, "unsupported media type"); return; }
         try (InputStream in = ex.getRequestBody()) {
+            UUID userId = auth.requireUserId(ex);
             MediaRequest req = mapper.readValue(in, MediaRequest.class);
-            MediaResponse resp = service.create(userId, req);
+            var resp = service.create(userId, req);
             sendJson(ex, 201, mapper.writeValueAsBytes(resp));
         } catch (IllegalArgumentException e) {
             sendError(ex, 400, e.getMessage());
@@ -43,27 +40,25 @@ public class MediaHandler {
         }
     }
 
-
-    // GET /media/{id}
     public void getOne(HttpExchange ex, UUID id) throws IOException {
         auth.requireAuth(ex);
         try {
-            MediaResponse resp = service.get(id);
+            var resp = service.get(id);
             sendJson(ex, 200, mapper.writeValueAsBytes(resp));
         } catch (IllegalArgumentException e) {
             sendError(ex, 404, "not found");
         }
     }
 
-    // PUT /media/{id}
     public void update(HttpExchange ex, UUID id) throws IOException {
-        var userId = auth.requireUserId(ex);
+        String ct = ex.getRequestHeaders().getFirst("Content-Type");
+        if (ct == null || !ct.toLowerCase().contains("application/json")) { sendError(ex, 415, "unsupported media type"); return; }
         try (InputStream in = ex.getRequestBody()) {
+            UUID userId = auth.requireUserId(ex);
             MediaRequest req = mapper.readValue(in, MediaRequest.class);
-            MediaResponse resp = service.update(id, userId, req);
+            var resp = service.update(id, userId, req);
             sendJson(ex, 200, mapper.writeValueAsBytes(resp));
         } catch (IllegalArgumentException e) {
-            // not found / validation
             String msg = e.getMessage();
             if ("media not found".equalsIgnoreCase(msg)) sendError(ex, 404, "not found");
             else sendError(ex, 400, msg);
@@ -72,10 +67,9 @@ public class MediaHandler {
         }
     }
 
-    // DELETE /media/{id}
     public void delete(HttpExchange ex, UUID id) throws IOException {
-        var userId = auth.requireUserId(ex);
         try {
+            UUID userId = auth.requireUserId(ex);
             service.delete(id, userId);
             sendEmpty(ex, 204);
         } catch (IllegalArgumentException e) {
@@ -85,77 +79,25 @@ public class MediaHandler {
         }
     }
 
-    // GET /media?q=&type=&yearFrom=&yearTo=&ageMax=&sortBy=&sortDir=&limit=&offset=
     public void list(HttpExchange ex) throws IOException {
         auth.requireAuth(ex);
-        Map<String, String> q = parseQuery(ex.getRequestURI());
-
-        String query = q.get("q");
-        String type = q.get("type"); // erwartet "MOVIE"/"SERIES"/"GAME" als TEXT
-
-        Integer yearFrom = toInt(q.get("yearFrom"));
-        Integer yearTo   = toInt(q.get("yearTo"));
-        Integer ageMax   = toInt(q.get("ageMax"));
-
-        String sortBy = emptyToNull(q.get("sortBy"));   // "title" | "year" | "created"
-        String sortDir = emptyToNull(q.get("sortDir")); // "asc" | "desc"
-
-        int limit  = orDefault(toInt(q.get("limit")), 20);
-        int offset = orDefault(toInt(q.get("offset")), 0);
-
-        MediaSearch search = new MediaSearch(
-                query, type, yearFrom, yearTo, ageMax,
-                sortBy == null ? "created" : sortBy,
-                sortDir == null ? "desc" : sortDir,
-                limit, offset
+        var q = Query.from(ex.getRequestURI());
+        var search = new mrp.domain.ports.MediaSearch(
+                q.s("q"), q.s("type"), q.i("yearFrom"), q.i("yearTo"), q.i("ageMax"),
+                q.sOr("sortBy","created"), q.sOr("sortDir","desc"),
+                q.iOr("limit",20), q.iOr("offset",0)
         );
-
         var list = service.search(search);
         sendJson(ex, 200, mapper.writeValueAsBytes(list));
     }
 
     // ---- helpers ----
-    private Map<String, String> parseQuery(URI uri) {
-        Map<String, String> map = new HashMap<>();
-        String q = uri.getQuery();
-        if (q == null || q.isBlank()) return map;
-        String[] parts = q.split("&");
-        for (String p : parts) {
-            int i = p.indexOf('=');
-            if (i > 0) {
-                String k = urlDecode(p.substring(0, i));
-                String v = urlDecode(p.substring(i + 1));
-                map.put(k, v);
-            }
-        }
-        return map;
-    }
-
-    private String urlDecode(String s) {
-        try { return java.net.URLDecoder.decode(s, java.nio.charset.StandardCharsets.UTF_8); }
-        catch (Exception e) { return s; }
-    }
-
-    private Integer toInt(String s) {
-        try { return s == null ? null : Integer.parseInt(s); }
-        catch (Exception e) { return null; }
-    }
-
-    private int orDefault(Integer v, int def) { return v == null ? def : v; }
-
-    private String emptyToNull(String s) {
-        if (s == null) return null;
-        String t = s.trim();
-        return t.isEmpty() ? null : t;
-    }
-
-    private void sendJson(HttpExchange ex, int code, byte[] json) throws IOException {
+    private void sendJson(HttpExchange ex, int status, byte[] json) throws IOException {
         ex.getResponseHeaders().add("Content-Type", "application/json");
-        ex.sendResponseHeaders(code, json.length);
+        ex.sendResponseHeaders(status, json.length);
         ex.getResponseBody().write(json);
         ex.close();
     }
-
     private void sendError(HttpExchange ex, int code, String msg) throws IOException {
         byte[] body = ("{\"error\":\"" + msg + "\"}").getBytes(java.nio.charset.StandardCharsets.UTF_8);
         ex.getResponseHeaders().add("Content-Type", "application/json");
@@ -163,9 +105,26 @@ public class MediaHandler {
         ex.getResponseBody().write(body);
         ex.close();
     }
-
     private void sendEmpty(HttpExchange ex, int code) throws IOException {
         ex.sendResponseHeaders(code, -1);
         ex.close();
+    }
+
+    // Mini Query-Helper (optional)
+    private static class Query {
+        java.util.Map<String,String> m;
+        static Query from(java.net.URI u) {
+            Query q = new Query(); q.m = new java.util.HashMap<>();
+            String s = u.getQuery(); if (s == null) return q;
+            for (String p : s.split("&")) {
+                int i = p.indexOf('='); String k = i>0 ? p.substring(0,i) : p; String v = i>0 ? p.substring(i+1) : "";
+                q.m.put(java.net.URLDecoder.decode(k, java.nio.charset.StandardCharsets.UTF_8),
+                        java.net.URLDecoder.decode(v, java.nio.charset.StandardCharsets.UTF_8));
+            } return q;
+        }
+        String s(String k){ return m.get(k); }
+        String sOr(String k,String d){ String v=m.get(k); return v==null||v.isBlank()?d:v; }
+        Integer i(String k){ try { return m.get(k)==null?null:Integer.parseInt(m.get(k)); } catch(Exception e){ return null; } }
+        Integer iOr(String k,int d){ Integer v=i(k); return v==null?d:v; }
     }
 }

@@ -19,6 +19,9 @@ public class AuthService {
     public AuthContext requireAuth(HttpExchange ex) {
         if (ex == null) throw new IllegalArgumentException("exchange null");
         String header = ex.getRequestHeaders().getFirst("Authorization");
+
+        System.out.println("DEBUG Auth Header = [" + header + "]");
+
         String token = extractBearer(header);
         UUID userId = tokens.verifyAndGetUserId(token);
         return new AuthContext(userId, token);

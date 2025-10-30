@@ -1,10 +1,11 @@
 package mrp.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import mrp.domain.model.enums.MediaType;
 import java.util.List;
 
 public class MediaRequest {
-
     private String title;
     private String description;
     private MediaType mediaType;
@@ -12,12 +13,15 @@ public class MediaRequest {
     private List<String> genres;
     private Integer ageRestriction;
 
-    public MediaRequest(String title,
-                        String description,
-                        MediaType mediaType,
-                        Integer releaseYear,
-                        List<String> genres,
-                        Integer ageRestriction) {
+    @JsonCreator
+    public MediaRequest(
+            @JsonProperty("title") String title,
+            @JsonProperty("description") String description,
+            @JsonProperty("mediaType") MediaType mediaType,
+            @JsonProperty("releaseYear") Integer releaseYear,
+            @JsonProperty("genres") List<String> genres,
+            @JsonProperty("ageRestriction") Integer ageRestriction
+    ) {
         this.title = title;
         this.description = description;
         this.mediaType = mediaType;
