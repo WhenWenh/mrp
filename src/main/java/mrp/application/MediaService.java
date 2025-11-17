@@ -81,7 +81,7 @@ public class MediaService {
     }
 
     public List<MediaResponse> search(MediaSearch s) {
-        if (s == null) s = new MediaSearch(null, null, null, null, null, "created", "desc", 20, 0);
+        if (s == null) s = new MediaSearch(null, null, null, null, null, null, "created", "desc", 20, 0);
         List<MediaEntry> list = repo.search(s);
         List<MediaResponse> out = new ArrayList<>();
         for (MediaEntry e : list) out.add(toResponse(e));

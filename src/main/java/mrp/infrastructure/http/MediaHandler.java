@@ -83,7 +83,7 @@ public class MediaHandler {
         auth.requireAuth(ex);
         var q = Query.from(ex.getRequestURI());
         var search = new mrp.domain.ports.MediaSearch(
-                q.s("q"), q.s("type"), q.i("yearFrom"), q.i("yearTo"), q.i("ageMax"),
+                q.s("q"), q.s("type"), q.s("genre"),q.i("yearFrom"), q.i("yearTo"), q.i("ageMax"),
                 q.sOr("sortBy","created"), q.sOr("sortDir","desc"),
                 q.iOr("limit",20), q.iOr("offset",0)
         );

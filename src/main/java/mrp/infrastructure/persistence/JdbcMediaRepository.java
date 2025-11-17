@@ -94,18 +94,36 @@ public class JdbcMediaRepository implements MediaRepository {
             throw new RuntimeException("delete failed", ex);
         }
     }
-
     @Override
     public List<MediaEntry> search(MediaSearch s) {
         StringBuilder sb = new StringBuilder("SELECT * FROM media_entries WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
         if (s != null) {
-            if (s.getQuery() != null && !s.getQuery().trim().isEmpty()) { sb.append(" AND title ILIKE ?"); params.add("%" + s.getQuery().trim() + "%"); }
-            if (s.getMediaType() != null && !s.getMediaType().trim().isEmpty()) { sb.append(" AND media_type = ?"); params.add(s.getMediaType().trim()); }
-            if (s.getYearFrom() != null) { sb.append(" AND release_year >= ?"); params.add(s.getYearFrom()); }
-            if (s.getYearTo() != null) { sb.append(" AND release_year <= ?"); params.add(s.getYearTo()); }
-            if (s.getAgeMax() != null) { sb.append(" AND (age_restriction IS NULL OR age_restriction <= ?)"); params.add(s.getAgeMax()); }
+            if (s.getQuery() != null && !s.getQuery().trim().isEmpty()) {
+                sb.append(" AND title ILIKE ?");
+                params.add("%" + s.getQuery().trim() + "%");
+            }
+            if (s.getMediaType() != null && !s.getMediaType().trim().isEmpty()) {
+                sb.append(" AND media_type = ?");
+                params.add(s.getMediaType().trim());
+            }
+            if (s.getYearFrom() != null) {
+                sb.append(" AND release_year >= ?");
+                params.add(s.getYearFrom());
+            }
+            if (s.getYearTo() != null) {
+                sb.append(" AND release_year <= ?");
+                params.add(s.getYearTo());
+            }
+            if (s.getAgeMax() != null) {
+                sb.append(" AND (age_restriction IS NULL OR age_restriction <= ?)");
+                params.add(s.getAgeMax());
+            }
+            if (s.getGenre() != null && !s.getGenre().trim().isEmpty()) {
+                sb.append(" AND ? = ANY(genres)");
+                params.add(s.getGenre().trim());
+            }
         }
 
         String sortCol = "created_at";
@@ -117,10 +135,14 @@ public class JdbcMediaRepository implements MediaRepository {
         String dir = (s != null && "asc".equalsIgnoreCase(s.getSortDir())) ? "ASC" : "DESC";
         int limit = (s != null ? s.getLimit() : 20);
         int offset = (s != null ? s.getOffset() : 0);
-        if (limit <= 0) limit = 20; if (offset < 0) offset = 0;
+        if (limit <= 0) limit = 20;
+        if (limit > 100) limit = 100;
+        if (offset < 0) offset = 0;
 
-        sb.append(" ORDER BY ").append(sortCol).append(" ").append(dir).append(" LIMIT ? OFFSET ?");
-        params.add(limit); params.add(offset);
+        sb.append(" ORDER BY ").append(sortCol).append(" ").append(dir)
+                .append(" LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
 
         try (Connection c = ConnectionFactory.get();
              PreparedStatement ps = c.prepareStatement(sb.toString())) {

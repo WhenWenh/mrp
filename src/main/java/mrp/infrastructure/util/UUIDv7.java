@@ -2,7 +2,7 @@
 
 import java.security.SecureRandom;
 import java.util.UUID;
-//TODO zu einer Dependency ändern
+
 /**
  * Einfache UUIDv7-Generierung (RFC 9562) mit Millisekunden-Timestamp + Random.
  * Ergebnis ist eine RFC-4122-konforme UUID (Version=7, Variant=RFC4122).

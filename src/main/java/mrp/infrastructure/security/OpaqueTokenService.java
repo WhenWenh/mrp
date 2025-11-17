@@ -36,7 +36,7 @@ public class OpaqueTokenService implements AuthTokenService {
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setObject(1, jti);
             ps.setObject(2, userId);
-            // Hinweis: Für die Abgabe speichern wir den Klar-Token. In Produktion besser nur einen Hash speichern.
+            // Hinweis: Für die Abgabe speicher den Klar-Token. In Produktion besser nur einen Hash speichern.
             ps.setString(3, token);
             ps.setTimestamp(4, Timestamp.from(now));
             ps.setTimestamp(5, Timestamp.from(exp));

@@ -84,16 +84,7 @@ public class UserHandler implements RouteHandler {
         }
     }
 
-   /* private void logout(HttpExchange ex) throws IOException {
-        try {
-            String authHeader = ex.getRequestHeaders().getFirst("Authorization");
-            auth.revokeFromAuthHeader(authHeader);
-            ex.sendResponseHeaders(204, -1);
-        } catch (IllegalArgumentException e) {
-            sendText(ex, 401, e.getMessage());
-        }
-    }
-*/
+
     private void sendJson(HttpExchange ex, int status, byte[] body) throws IOException {
         ex.getResponseHeaders().set("Content-Type", "application/json");
         ex.sendResponseHeaders(status, body.length);

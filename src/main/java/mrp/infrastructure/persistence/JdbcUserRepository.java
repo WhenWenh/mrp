@@ -6,8 +6,6 @@ import mrp.infrastructure.config.ConnectionFactory;
 //import com.github.f4b6a3.uuid.UuidCreator;
 import mrp.infrastructure.util.UUIDv7;
 
-//TODO: Prepare-Statements -->
-
 import java.sql.*;
 import java.time.Instant;
 import java.util.Optional;

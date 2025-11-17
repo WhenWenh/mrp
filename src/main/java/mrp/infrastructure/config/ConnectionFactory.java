@@ -5,7 +5,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class ConnectionFactory {
-
+    //PGPASSWORD="$POSTGRES_PASSWORD" psql -U mrp -d mrp
     private static String url   = getenv("DB_URL", "jdbc:postgresql://localhost:5432/mrp");
     private static String user  = getenv("DB_USER", "mrp");
     private static String pass  = getenv("DB_PASSWORD", "mrp");

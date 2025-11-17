@@ -27,12 +27,12 @@ public class AuthService {
         return new AuthContext(userId, token);
     }
 
-    /** Falls du nur die UUID brauchst. */
+
     public UUID requireUserId(HttpExchange ex) {
         return requireAuth(ex).getUserId();
     }
 
-    /** Weiter nutzbar, wenn du direkt einen Header-String hast. */
+    /** Weiter nutzbar, wenn direkt einen Header-String */
     public UUID userIdFromAuthHeader(String authHeader) {
         String token = extractBearer(authHeader);
         return tokens.verifyAndGetUserId(token);
@@ -56,7 +56,7 @@ public class AuthService {
     }
 
     // Kleiner Context ohne Lombok/record/final
-    public static class AuthContext {
+    public class AuthContext {
         private UUID userId;
         private String token;
 
