@@ -26,6 +26,8 @@ public class Main {
     public static void main(String[] args) throws Exception {
         int port = 8080;
 
+        //TODO: Router eventuel verschieben
+
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.configure(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
