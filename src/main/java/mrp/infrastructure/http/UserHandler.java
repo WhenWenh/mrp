@@ -9,6 +9,10 @@ import mrp.dto.UserCredentials;
 import mrp.dto.UserResponse;
 import mrp.infrastructure.security.AuthService;
 
+import mrp.dto.UserProfileResponse;
+import mrp.dto.UserProfileUpdate;
+
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -39,7 +43,21 @@ public class UserHandler implements RouteHandler {
         if ("POST".equals(method) && path.endsWith("/users/register")) { register(exchange); return; }
         if ("POST".equals(method) && path.endsWith("/users/login"))    { login(exchange);    return; }
         if ("GET".equals(method)  && path.endsWith("/users/me"))       { me(exchange);       return; }
-        //if ("POST".equals(method) && path.endsWith("/users/logout"))   { logout(exchange);   return; }
+
+        if (matcher != null && matcher.groupCount() >= 1
+                && path.matches(".*/users/[0-9a-fA-F-]{36}/profile$")) {
+
+            UUID userId = UUID.fromString(matcher.group(1));
+
+            if ("GET".equals(method)) {
+                profile(exchange, userId);
+                return;
+            }
+            if ("PUT".equals(method)) {
+                updateProfile(exchange, userId);
+                return;
+            }
+        }
 
         exchange.sendResponseHeaders(404, -1);
     }
@@ -82,6 +100,80 @@ public class UserHandler implements RouteHandler {
         } catch (IllegalArgumentException e) {
             sendText(ex, 401, e.getMessage());
         }
+    }
+
+    private void profile(HttpExchange ex, UUID userId) throws IOException {
+        // Auth-Pflicht
+        UUID authUserId;
+        try {
+            authUserId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            // kein / ungültiger Authorization-Header
+            sendText(ex, 401, e.getMessage());
+            return;
+        }
+
+        // Nutzer darf nur sein eigenes Profil sehen
+        if (!authUserId.equals(userId)) {
+            sendText(ex, 403, "forbidden");
+            return;
+        }
+
+        try {
+            User u = service.getProfile(userId);
+
+            // TODO: sobald Rating-Logik implementiert ist, hier echte Statistiken berechnen
+            int totalRatings = 0;
+            double averageScore = 0.0;
+
+            UserProfileResponse dto = toProfileResponse(u, totalRatings, averageScore);
+            byte[] json = MAPPER.writeValueAsBytes(dto);
+            sendJson(ex, 200, json);
+        } catch (IllegalArgumentException e) {
+            // user not found
+            sendText(ex, 404, e.getMessage());
+        }
+    }
+
+    private void updateProfile(HttpExchange ex, UUID userId) throws IOException {
+        UUID authUserId;
+        try {
+            authUserId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            sendText(ex, 401, e.getMessage());
+            return;
+        }
+
+        if (!authUserId.equals(userId)) {
+            sendText(ex, 403, "forbidden");
+            return;
+        }
+
+        try (InputStream in = ex.getRequestBody()) {
+            UserProfileUpdate update = MAPPER.readValue(in, UserProfileUpdate.class);
+            User u = service.updateProfile(userId, update.email, update.favoriteGenre);
+
+            int totalRatings = 0;
+            double averageScore = 0.0;
+
+            UserProfileResponse dto = toProfileResponse(u, totalRatings, averageScore);
+            byte[] json = MAPPER.writeValueAsBytes(dto);
+            sendJson(ex, 200, json);
+        } catch (IllegalArgumentException e) {
+            // z.B. ungültige Email
+            sendText(ex, 400, e.getMessage());
+        }
+    }
+
+    private UserProfileResponse toProfileResponse(User u, int totalRatings, double averageScore) {
+        UserProfileResponse dto = new UserProfileResponse();
+        dto.id = u.getId();
+        dto.username = u.getUsername();
+        dto.email = u.getEmail();
+        dto.favoriteGenre = u.getFavoriteGenre();
+        dto.totalRatings = totalRatings;
+        dto.averageScore = averageScore;
+        return dto;
     }
 
 

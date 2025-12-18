@@ -6,16 +6,22 @@ import com.sun.net.httpserver.HttpServer;
 
 import mrp.application.MediaService;
 import mrp.application.UserService;
+import mrp.application.RatingService;
 
 import mrp.domain.ports.AuthTokenService;
 import mrp.domain.ports.MediaRepository;
 import mrp.domain.ports.UserRepository;
+import mrp.domain.ports.RatingRepository;
 
 import mrp.infrastructure.http.MediaHandler;
 import mrp.infrastructure.http.Router;
 import mrp.infrastructure.http.UserHandler;
+import mrp.infrastructure.http.RatingHandler;
+
 import mrp.infrastructure.persistence.JdbcMediaRepository;
 import mrp.infrastructure.persistence.JdbcUserRepository;
+import mrp.infrastructure.persistence.JdbcRatingRepository;
+
 import mrp.infrastructure.security.AuthService;
 import mrp.infrastructure.security.OpaqueTokenService;
 
@@ -27,6 +33,7 @@ public class Main {
         int port = 8080;
 
         //TODO: Router eventuel verschieben
+        //TODO: Singelton desgin pattern überprüfen
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
@@ -35,15 +42,18 @@ public class Main {
 
         UserRepository userRepo = new JdbcUserRepository();
         MediaRepository mediaRepo = new JdbcMediaRepository();
+        RatingRepository ratingRepo = new JdbcRatingRepository();
 
         AuthTokenService tokenService = new OpaqueTokenService();
         AuthService authService = new AuthService(tokenService);
 
         UserService userService = new UserService(userRepo, tokenService);
         MediaService mediaService = new MediaService(mediaRepo);
+        RatingService ratingService = new RatingService(ratingRepo, mediaRepo);
 
         UserHandler userHandler = new UserHandler(userService, authService);
         MediaHandler mediaHandler = new MediaHandler(mapper, mediaService, authService);
+        RatingHandler ratingHandler = new RatingHandler(mapper, ratingService, authService);
 
         Router router = new Router("/api");
 
@@ -51,6 +61,8 @@ public class Main {
         router.add("POST", "^/users/register$", userHandler);
         router.add("POST", "^/users/login$",    userHandler);
         router.add("GET",  "^/users/me$",       userHandler);
+        router.add("GET",  "^/users/([0-9a-fA-F-]{36})/profile$", userHandler);
+        router.add("PUT",  "^/users/([0-9a-fA-F-]{36})/profile$", userHandler);
 
         // Media
         router.add("POST", "^/media$",          (ex, m) -> mediaHandler.create(ex));
@@ -71,5 +83,26 @@ public class Main {
         server.start();
         System.out.println("MRP HTTP Server läuft auf http://localhost:" + port + "/api");
         Runtime.getRuntime().addShutdownHook(new Thread(() -> { server.stop(0); }));
+
+        // Ratings
+        router.add("POST", "^/media/([0-9a-fA-F-]{36})/ratings$", (ex, m) -> {
+            UUID mediaId = UUID.fromString(m.group(1));
+            ratingHandler.rateMedia(ex, mediaId);
+        });
+        router.add("GET", "^/media/([0-9a-fA-F-]{36})/ratings$", (ex, m) -> {
+            UUID mediaId = UUID.fromString(m.group(1));
+            ratingHandler.listForMedia(ex, mediaId);
+        });
+        router.add("GET", "^/users/me/ratings$", (ex, m) -> {
+            ratingHandler.listMine(ex);
+        });
+        router.add("PUT", "^/ratings/([0-9a-fA-F-]{36})$", (ex, m) -> {
+            UUID ratingId = UUID.fromString(m.group(1));
+            ratingHandler.update(ex, ratingId);
+        });
+        router.add("DELETE", "^/ratings/([0-9a-fA-F-]{36})$", (ex, m) -> {
+            UUID ratingId = UUID.fromString(m.group(1));
+            ratingHandler.delete(ex, ratingId);
+        });
     }
 }
