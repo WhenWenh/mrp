@@ -37,19 +37,25 @@ public class Rating {
 
     public UUID getId() { return id; }
     public void setId(UUID id) {
-        if (id == null) throw new IllegalArgumentException("id null");
+        if (id == null) {
+            throw new IllegalArgumentException("id null");
+        }
         this.id = id;
     }
 
     public UUID getMediaId() { return mediaId; }
     public void setMediaId(UUID mediaId) {
-        if (mediaId == null) throw new IllegalArgumentException("mediaId null");
+        if (mediaId == null) {
+            throw new IllegalArgumentException("mediaId null");
+        }
         this.mediaId = mediaId;
     }
 
     public UUID getUserId() { return userId; }
     public void setUserId(UUID userId) {
-        if (userId == null) throw new IllegalArgumentException("userId null");
+        if (userId == null) {
+            throw new IllegalArgumentException("userId null");
+        }
         this.userId = userId;
     }
 
