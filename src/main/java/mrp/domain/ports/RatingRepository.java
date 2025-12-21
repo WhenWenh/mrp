@@ -7,28 +7,54 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Minimaler Port für Ratings – derzeit nicht benötigt für Register/Login,
- * bleibt aber als Schnittstelle für kommende Features bestehen.
+ * Port für die Persistenz von Ratings.
+ *
+ * Implementierungen sind verantwortlich für:
+ * - Anlegen eines Ratings
+ * - Finden eines Ratings
+ * - Auflisten von Ratings eines Users bzw. eines Media-Eintrags
+ * - Aktualisieren und Löschen mit Berücksichtigung des Besitzer-Users
  */
 public interface RatingRepository {
 
-    default Rating create(Rating rating) {
-        throw new UnsupportedOperationException("not implemented");
-    }
+    /**
+     * Persistiert ein neues Rating.
+     * Erwartet ein Domain-Objekt mit gesetzten IDs (UUIDv7) und Validierung
+     * bereits auf Domain-Ebene (stars 1..5 etc.).
+     */
+    Rating create(Rating rating);
 
-    default Optional<Rating> findById(UUID id) {
-        return Optional.empty();
-    }
+    /**
+     * Findet ein Rating anhand seiner ID.
+     */
+    Optional<Rating> findById(UUID id);
 
-    default List<Rating> listByUser(UUID userId) {
-        return List.of();
-    }
+    /**
+     * Listet alle Ratings eines bestimmten Users.
+     */
+    List<Rating> listByUser(UUID userId);
 
-    default void update(UUID ratingId, UUID actorUserId, int stars, String comment) {
-        throw new UnsupportedOperationException("not implemented");
-    }
+    /**
+     * Listet alle Ratings zu einem bestimmten Media-Eintrag.
+     * (wird später z.B. für Detailansicht und Score-Berechnung genutzt)
+     */
+    List<Rating> listByMedia(UUID mediaId);
 
-    default void delete(UUID ratingId, UUID actorUserId) {
-        throw new UnsupportedOperationException("not implemented");
-    }
+    /**
+     * Aktualisiert ein Rating. Nur der Besitzer (actorUserId == rating.userId)
+     * darf eine Änderung vornehmen.
+     */
+    void update(UUID ratingId, UUID actorUserId, int stars, String comment);
+
+    /**
+     * Löscht ein Rating. Nur der Besitzer (actorUserId == rating.userId)
+     * darf löschen.
+     */
+    void delete(UUID ratingId, UUID actorUserId);
+
+    boolean confirmComment(UUID ratingId, UUID actorUserId);
+
+    boolean addLike(UUID ratingId, UUID likerUserId);
+
+    boolean removeLike(UUID ratingId, UUID likerUserId);
 }

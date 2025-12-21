@@ -68,12 +68,16 @@ public class UserService {
         return tokens.issueToken(u.getId(), u.getUsername());
     }
 
-    /**
-     * Liest das eigene Profil (z. B. für /users/me).
-     */
     public User getProfile(UUID userId) {
         if (userId == null) throw new IllegalArgumentException("userId null");
-        return users.findById(userId).orElseThrow(() -> new IllegalArgumentException("user not found"));
+        return users.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("user not found"));
+    }
+
+    public User updateProfile(UUID userId, String email, String favoriteGenre) {
+        if (userId == null) throw new IllegalArgumentException("userId null");
+        users.updateProfile(userId, email, favoriteGenre);
+        return getProfile(userId);
     }
 
     private void validateCredentials(String username, String rawPassword) {

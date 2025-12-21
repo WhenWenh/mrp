@@ -37,25 +37,33 @@ public class Rating {
 
     public UUID getId() { return id; }
     public void setId(UUID id) {
-        if (id == null) throw new IllegalArgumentException("id null");
+        if (id == null) {
+            throw new IllegalArgumentException("id null");
+        }
         this.id = id;
     }
 
     public UUID getMediaId() { return mediaId; }
     public void setMediaId(UUID mediaId) {
-        if (mediaId == null) throw new IllegalArgumentException("mediaId null");
+        if (mediaId == null) {
+            throw new IllegalArgumentException("mediaId null");
+        }
         this.mediaId = mediaId;
     }
 
     public UUID getUserId() { return userId; }
     public void setUserId(UUID userId) {
-        if (userId == null) throw new IllegalArgumentException("userId null");
+        if (userId == null) {
+            throw new IllegalArgumentException("userId null");
+        }
         this.userId = userId;
     }
 
     public int getStars() { return stars; }
     public void setStars(int stars) {
-        if (stars < 1 || stars > 5) throw new IllegalArgumentException("stars must be 1..5");
+        if (stars < 1 || stars > 5) {
+            throw new IllegalArgumentException("stars must be 1..5");
+        }
         this.stars = stars;
     }
 
@@ -65,7 +73,9 @@ public class Rating {
     }
 
     public boolean isCommentConfirmed() { return commentConfirmed; }
-    public void setCommentConfirmed(boolean commentConfirmed) { this.commentConfirmed = commentConfirmed; }
+    public void setCommentConfirmed(boolean commentConfirmed) {
+        this.commentConfirmed = commentConfirmed;
+    }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) {
@@ -78,11 +88,17 @@ public class Rating {
     }
 
     @Override public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Rating other)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Rating other)) {
+            return false;
+        }
         return Objects.equals(id, other.id);
     }
-    @Override public int hashCode() { return Objects.hash(id); }
+    @Override public int hashCode() {
+        return Objects.hash(id);
+    }
 
     @Override public String toString() {
         return "Rating{id=" + id + ", stars=" + stars + "}";

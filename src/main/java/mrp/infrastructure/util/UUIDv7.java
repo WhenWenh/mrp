@@ -37,7 +37,7 @@ import java.util.UUID;
 
 public class UUIDv7 {
 
-    // bewusst nicht 'final', gemäß Projektvorgabe
+
     private static SecureRandom random = new SecureRandom();
 
     public static UUID randomUUID() {
