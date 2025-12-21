@@ -51,4 +51,10 @@ public interface RatingRepository {
      * darf löschen.
      */
     void delete(UUID ratingId, UUID actorUserId);
+
+    boolean confirmComment(UUID ratingId, UUID actorUserId);
+
+    boolean addLike(UUID ratingId, UUID likerUserId);
+
+    boolean removeLike(UUID ratingId, UUID likerUserId);
 }

@@ -6,6 +6,7 @@ import mrp.domain.ports.MediaRepository;
 import mrp.domain.ports.RatingRepository;
 import mrp.dto.RatingRequest;
 import mrp.dto.RatingResponse;
+import mrp.infrastructure.util.UUIDv7;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +41,7 @@ public class RatingService {
                 .orElseThrow(() -> new IllegalArgumentException("media not found"));
 
         Rating rating = new Rating(
-                null,
+                UUIDv7.randomUUID(),
                 media.getId(),
                 userId,
                 req.getStars(),
@@ -174,6 +175,39 @@ public class RatingService {
 
         media.setAverageScore(avg);
         mediaRepo.update(media);
+    }
+
+    public void confirmComment(UUID ratingId, UUID actorUserId) {
+        if (ratingId == null) throw new IllegalArgumentException("ratingId null");
+        if (actorUserId == null) throw new IllegalArgumentException("actorUserId null");
+
+        boolean ok = ratings.confirmComment(ratingId, actorUserId);
+        if (!ok) {
+            throw new IllegalArgumentException("not found or forbidden or no comment");
+        }
+    }
+
+    public void like(UUID ratingId, UUID actorUserId) {
+        if (ratingId == null) throw new IllegalArgumentException("ratingId null");
+        if (actorUserId == null) throw new IllegalArgumentException("actorUserId null");
+
+        Rating r = ratings.findById(ratingId).orElseThrow(() -> new IllegalArgumentException("rating not found"));
+        if(r.getUserId().equals(actorUserId)) {
+            throw new IllegalArgumentException("forbidden: cannot like own rating");
+        }
+
+        boolean ok = ratings.addLike(ratingId, actorUserId);
+        if (!ok) {
+            throw new IllegalArgumentException("already liked or not found");
+        }
+    }
+
+    public void unlike(UUID ratingId, UUID actorUserId) {
+        if (ratingId == null) throw new IllegalArgumentException("id null");
+        if (actorUserId == null) throw new IllegalArgumentException("userId null");
+
+        boolean ok = ratings.removeLike(ratingId, actorUserId);
+        if (!ok) throw new IllegalArgumentException("not liked or not found");
     }
 
     /**

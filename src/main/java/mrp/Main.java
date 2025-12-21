@@ -104,5 +104,17 @@ public class Main {
             UUID ratingId = UUID.fromString(m.group(1));
             ratingHandler.delete(ex, ratingId);
         });
+        router.add("POST", "^/ratings/([0-9a-fA-F-]{36})/confirm-comment$", (ex, m) -> {
+            UUID id = UUID.fromString(m.group(1));
+            ratingHandler.confirmComment(ex, id);
+        });
+        router.add("POST", "^/ratings/([0-9a-fA-F-]{36})/like$", (ex, m) -> {
+            UUID id = UUID.fromString(m.group(1));
+            ratingHandler.like(ex, id);
+        });
+        router.add("DELETE", "^/ratings/([0-9a-fA-F-]{36})/like$", (ex, m) -> {
+            UUID id = UUID.fromString(m.group(1));
+            ratingHandler.unlike(ex, id);
+        });
     }
 }

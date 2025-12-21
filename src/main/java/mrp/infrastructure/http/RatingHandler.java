@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.UUID;
 
+//TODO: Fehlermeldung wenn einer schon Rating gemacht - bis dato ein 500 error
 
 public class RatingHandler {
     private ObjectMapper mapper;
@@ -119,6 +120,43 @@ public class RatingHandler {
             }
         } catch(SecurityException e){
             sendError(ex, 403, "forbidden");
+        }
+    }
+
+    // POST ratings/{{ratingId}}/confirm-comment
+    public void confirmComment(HttpExchange ex, UUID ratingId) throws IOException {
+        try {
+            UUID userId = auth.requireUserId(ex);
+            service.confirmComment(ratingId, userId);
+            sendEmpty(ex, 204);
+        } catch (IllegalArgumentException e) {
+            sendError(ex, 404, "not found");
+        } catch (SecurityException se) {
+            sendError(ex, 403, "forbidden");
+        }
+    }
+
+    // POST ratings/{{ratingId}}/like
+    public void like(HttpExchange ex, UUID ratingId) throws IOException {
+        try {
+            UUID userId = auth.requireUserId(ex);
+            service.like(ratingId, userId);
+            sendEmpty(ex, 204);
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            if ("cannot like own rating".equalsIgnoreCase(msg)) sendError(ex, 400, msg);
+            else sendError(ex, 400, msg != null ? msg : "bad request");
+        }
+    }
+
+    // DELETE ratings/{{ratingId}}/like
+    public void unlike(HttpExchange ex, UUID ratingId) throws IOException {
+        try {
+            UUID userId = auth.requireUserId(ex);
+            service.unlike(ratingId, userId);
+            sendEmpty(ex, 204);
+        } catch (IllegalArgumentException e) {
+            sendError(ex, 400, e.getMessage() != null ? e.getMessage() : "bad request");
         }
     }
 

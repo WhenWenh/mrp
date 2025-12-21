@@ -236,4 +236,95 @@ public class JdbcRatingRepository implements RatingRepository {
                 likeCount
         );
     }
+
+    @Override
+    public boolean confirmComment(UUID ratingId, UUID actorUserId) {
+        String sql = """
+                UPDATE ratings
+                SET comment_confirmed = true
+                WHERE id = ? AND user_id = ? AND COMMENT IS NOT NULL
+                """;
+
+        try (Connection c = ConnectionFactory.get()){
+            PreparedStatement ps = c.prepareStatement(sql);
+
+            ps.setObject(1, ratingId);
+            ps.setObject(2, actorUserId);
+            return ps.executeUpdate() == 1;
+        }catch (SQLException e){
+            throw new RuntimeException("confirmComment failed", e);
+        }
+    }
+    @Override
+    public boolean addLike(UUID ratingId, UUID likerUserId) {
+        String insert = "INSERT INTO rating_likes (rating_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING";
+        String inc = "UPDATE ratings SET like_count = like_count + 1 WHERE id = ?";
+
+        try (Connection c = ConnectionFactory.get()) {
+            c.setAutoCommit(false);
+
+            int inserted;
+            try (PreparedStatement ps = c.prepareStatement(insert)) {
+                ps.setObject(1, ratingId);
+                ps.setObject(2, likerUserId);
+                inserted = ps.executeUpdate();
+            }
+
+            if (inserted != 1) {
+                c.rollback();
+                return false; // schon geliked
+            }
+
+            try (PreparedStatement ps = c.prepareStatement(inc)) {
+                ps.setObject(1, ratingId);
+                if (ps.executeUpdate() != 1) {
+                    c.rollback();
+                    return false;
+                }
+            }
+
+            c.commit();
+            return true;
+
+
+        } catch(SQLException e){
+            throw new RuntimeException("addLike failed", e);
+        }
+    }
+
+
+    @Override
+    public boolean removeLike(UUID ratingId, UUID likerUserId) {
+        String del = "DELETE FROM rating_likes WHERE rating_id = ? AND user_id = ?";
+        String dec = "UPDATE ratings SET like_count = GREATEST(like_count - 1, 0) WHERE id = ?";
+
+        try (Connection c = ConnectionFactory.get()) {
+            c.setAutoCommit(false);
+
+            int removed;
+            try (PreparedStatement ps = c.prepareStatement(del)) {
+                ps.setObject(1, ratingId);
+                ps.setObject(2, likerUserId);
+                removed = ps.executeUpdate();
+            }
+
+            if (removed != 1) {
+                c.rollback();
+                return false; // war nicht geliked
+            }
+
+            try (PreparedStatement ps = c.prepareStatement(dec)) {
+                ps.setObject(1, ratingId);
+                if (ps.executeUpdate() != 1) {
+                    c.rollback();
+                    return false;
+                }
+            }
+
+            c.commit();
+            return true;
+        } catch (SQLException e) {
+            throw new RuntimeException("removeLike failed", e);
+        }
+    }
 }
