@@ -1,0 +1,20 @@
+src.main.java.mrp.domain.model
+Was:
+    -Reine Objekte für die Fachlogik: User, Media, Rating, MediaType
+    -Enthalten nur Felder, einfache Methoden
+    -Unabhängig von HTTP, DB, Frameworks
+Wozu
+    -Kern der Anwendung, portable in jedes Umfeld
+    -Alles andere (HTTP, DB) davon abhängig, nicht umgekehrt
+
+<----------------------------------------------------------------------------------------------->
+
+src.main.java.mrp.domain.ports
+Was:
+    -"Vertrag" zwischen Domain/Service und Außenwelt
+    -z.B. ein Interface "UserRepository", das die Service-Schicht nutzt
+    -Implementierungen in Persistence
+Wozu:
+    -Services müssen nicht wissen, wie die DB funktioniert.
+    -Du kannst austauschen: JDBC ↔ In-Memory-Testrepo ↔ anderes DB-System.
+    -Ermöglicht DIP (Dependency Inversion Principle) → SOLID-konform
