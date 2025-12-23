@@ -76,3 +76,23 @@ CREATE TABLE IF NOT EXISTS ratings (
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_user_media_unique_rating
     ON ratings (media_id, user_id);
+
+CREATE TABLE IF NOT EXISTS rating_likes (
+                                            rating_id UUID NOT NULL REFERENCES ratings(id) ON DELETE CASCADE,
+                                            user_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                                            PRIMARY KEY (rating_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rating_likes_user ON rating_likes(user_id);
+
+-- Favorites: User kann Media als Favorit markieren (1x pro User/Media)
+CREATE TABLE IF NOT EXISTS favorites (
+                                         user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                         media_id UUID NOT NULL REFERENCES media_entries(id) ON DELETE CASCADE,
+                                         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                                         PRIMARY KEY (user_id, media_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_media ON favorites(media_id);
