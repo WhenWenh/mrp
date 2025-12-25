@@ -52,6 +52,7 @@ public class JdbcFavoriteRepository implements FavoriteRepository {
             return out;
         } catch (SQLException e) {
             throw new RuntimeException("list favorites failed", e);
+
         }
     }
 }
