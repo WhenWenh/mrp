@@ -1,6 +1,5 @@
 package mrp.infrastructure.persistence;
 
-import com.github.f4b6a3.uuid.enums.UuidNamespace;
 import mrp.domain.ports.FavoriteRepository;
 import mrp.infrastructure.config.ConnectionFactory;
 
