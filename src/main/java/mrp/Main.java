@@ -56,7 +56,7 @@ public class Main {
         AuthTokenService tokenService = new OpaqueTokenService();
         AuthService authService = new AuthService(tokenService);
 
-        UserService userService = new UserService(userRepo, tokenService);
+        UserService userService = new UserService(userRepo, tokenService, ratingRepo);
         MediaService mediaService = new MediaService(mediaRepo);
         RatingService ratingService = new RatingService(ratingRepo, mediaRepo);
         FavoriteService favoriteService = new FavoriteService(favoriteRepo, mediaRepo);

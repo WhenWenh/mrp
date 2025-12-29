@@ -6,6 +6,11 @@ import mrp.domain.ports.AuthTokenService;
 import mrp.domain.ports.UserRepository;
 import mrp.dto.TokenResponse;
 
+import mrp.domain.model.Rating;
+import mrp.domain.ports.RatingRepository;
+import mrp.dto.UserRatingStats;
+
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,12 +22,15 @@ public class UserService {
 
     private UserRepository users;
     private AuthTokenService tokens;
+    private RatingRepository ratings;
 
-    public UserService(UserRepository users, AuthTokenService tokens) {
+    public UserService(UserRepository users, AuthTokenService tokens, RatingRepository ratings) {
         if (users == null) throw new IllegalArgumentException("users null");
         if (tokens == null) throw new IllegalArgumentException("tokens null");
+        if (ratings == null) throw new IllegalArgumentException("ratings null");
         this.users = users;
         this.tokens = tokens;
+        this.ratings = ratings;
     }
 
     /*
@@ -31,6 +39,22 @@ public class UserService {
      * @throws IllegalArgumentException bei ungültigen Eingaben
      */
 
+    public UserRatingStats getUserRatingStats(UUID userId) {
+        List<Rating> ratingList = ratings.listByUser(userId);
+
+        int total = ratingList.size();
+        if (total == 0) {
+            return new UserRatingStats(0, 0.0);
+        }
+
+        int sum = 0;
+        for (Rating r : ratingList) {
+            sum += r.getStars();
+        }
+
+        double avg = (double) sum / (double) total;
+        return new UserRatingStats(total, avg);
+    }
 
     public User register(String username, String rawPassword) {
         validateCredentials(username, rawPassword);

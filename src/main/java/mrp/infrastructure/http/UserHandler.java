@@ -122,11 +122,9 @@ public class UserHandler implements RouteHandler {
         try {
             User u = service.getProfile(userId);
 
-            // TODO: sobald Rating-Logik implementiert ist, hier echte Statistiken berechnen
-            int totalRatings = 0;
-            double averageScore = 0.0;
+            mrp.dto.UserRatingStats stats = service.getUserRatingStats(userId);
 
-            UserProfileResponse dto = toProfileResponse(u, totalRatings, averageScore);
+            UserProfileResponse dto = toProfileResponse(u, stats.totalRatings, stats.averageScore);
             byte[] json = MAPPER.writeValueAsBytes(dto);
             sendJson(ex, 200, json);
         } catch (IllegalArgumentException e) {
@@ -153,14 +151,12 @@ public class UserHandler implements RouteHandler {
             UserProfileUpdate update = MAPPER.readValue(in, UserProfileUpdate.class);
             User u = service.updateProfile(userId, update.email, update.favoriteGenre);
 
-            int totalRatings = 0;
-            double averageScore = 0.0;
+            mrp.dto.UserRatingStats stats = service.getUserRatingStats(userId);
 
-            UserProfileResponse dto = toProfileResponse(u, totalRatings, averageScore);
+            UserProfileResponse dto = toProfileResponse(u, stats.totalRatings, stats.averageScore);
             byte[] json = MAPPER.writeValueAsBytes(dto);
             sendJson(ex, 200, json);
         } catch (IllegalArgumentException e) {
-            // z.B. ungültige Email
             sendText(ex, 400, e.getMessage());
         }
     }
