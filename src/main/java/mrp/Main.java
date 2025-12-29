@@ -9,6 +9,7 @@ import mrp.application.UserService;
 import mrp.application.RatingService;
 import mrp.application.FavoriteService;
 import mrp.application.RecommendationService;
+import mrp.application.LeaderboardService;
 
 import mrp.domain.ports.AuthTokenService;
 import mrp.domain.ports.MediaRepository;
@@ -22,6 +23,7 @@ import mrp.infrastructure.http.UserHandler;
 import mrp.infrastructure.http.RatingHandler;
 import mrp.infrastructure.http.FavoriteHandler;
 import mrp.infrastructure.http.RecommendationHandler;
+import mrp.infrastructure.http.LeaderboardHandler;
 
 import mrp.infrastructure.persistence.JdbcMediaRepository;
 import mrp.infrastructure.persistence.JdbcUserRepository;
@@ -61,12 +63,14 @@ public class Main {
         RatingService ratingService = new RatingService(ratingRepo, mediaRepo);
         FavoriteService favoriteService = new FavoriteService(favoriteRepo, mediaRepo);
         RecommendationService recommendationService = new RecommendationService(ratingRepo, mediaRepo);
+        LeaderboardService leaderboardService = new LeaderboardService(userRepo);
 
         UserHandler userHandler = new UserHandler(userService, authService);
         MediaHandler mediaHandler = new MediaHandler(mapper, mediaService, authService);
         RatingHandler ratingHandler = new RatingHandler(mapper, ratingService, authService);
         FavoriteHandler favoriteHandler = new FavoriteHandler(mapper, favoriteService, authService);
         RecommendationHandler recommendationHandler = new RecommendationHandler(mapper, recommendationService, authService);
+        LeaderboardHandler leaderboardHandler = new LeaderboardHandler(mapper, leaderboardService, authService);
 
         Router router = new Router("/api");
 
@@ -146,6 +150,11 @@ public class Main {
         //Recommendation
         router.add("GET", "^/users/me/recommendations$", (ex, m) -> {
             recommendationHandler.listMine(ex);
+        });
+
+        //Leaderboard
+        router.add("GET", "^/leaderboard$", (ex, m) -> {
+            leaderboardHandler.list(ex);
         });
 
     }

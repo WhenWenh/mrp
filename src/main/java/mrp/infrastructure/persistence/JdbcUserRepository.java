@@ -3,9 +3,11 @@ package mrp.infrastructure.persistence;
 import mrp.domain.model.User;
 import mrp.domain.ports.UserRepository;
 import mrp.infrastructure.config.ConnectionFactory;
-//import com.github.f4b6a3.uuid.UuidCreator;
 import mrp.infrastructure.util.UUIDv7;
+import mrp.domain.model.LeaderboardEntry;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.sql.*;
 import java.time.Instant;
 import java.util.Optional;
@@ -84,6 +86,44 @@ public class JdbcUserRepository implements UserRepository {
             throw new RuntimeException("updateProfile failed", e);
         }
     }
+
+    @Override
+    public List<LeaderboardEntry> leaderboardByRatings(int limit, int offset) {
+        int safeLimit = limit <= 0 ? 10 : Math.min(limit, 100);
+        int safeOffset = Math.max(offset, 0);
+
+        String sql = """
+        SELECT u.id, u.username, COUNT(r.id) AS rating_count
+        FROM users u
+        LEFT JOIN ratings r ON r.user_id = u.id
+        GROUP BY u.id, u.username
+        ORDER BY rating_count DESC, u.username ASC
+        LIMIT ? OFFSET ?
+        """;
+
+        List<LeaderboardEntry> result = new ArrayList<>();
+
+        try (Connection c = ConnectionFactory.get();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setInt(1, safeLimit);
+            ps.setInt(2, safeOffset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    UUID id = (UUID) rs.getObject("id");
+                    String username = rs.getString("username");
+                    int count = rs.getInt("rating_count");
+                    result.add(new LeaderboardEntry(id, username, count));
+                }
+            }
+
+            return result;
+        } catch (SQLException e) {
+            throw new RuntimeException("leaderboardByRatings failed", e);
+        }
+    }
+
 
     private User map(ResultSet rs) throws SQLException {
         UUID id = (UUID) rs.getObject("id");
