@@ -23,7 +23,5 @@ public interface UserRepository {
 
     void updateProfile(UUID id, String email, String favoriteGenre);
 
-    default List<LeaderboardEntry> leaderboardByRatings(int limit, int offset) {
-        throw new UnsupportedOperationException("not implemented");
-    }
+    List<LeaderboardEntry> leaderboardByRatings(int limit, int offset);
 }

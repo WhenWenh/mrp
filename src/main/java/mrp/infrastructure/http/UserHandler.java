@@ -12,27 +12,24 @@ import mrp.infrastructure.security.AuthService;
 import mrp.dto.UserProfileResponse;
 import mrp.dto.UserProfileUpdate;
 
-
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.UUID;
 import java.util.regex.Matcher;
 
-//TODO Tokens sollen geupdated werden nach jedem login kein neuer insert
-//TODO Einzelne Exceptions für verschiedene Fehlertypen werfen und auffangen
-//TODO Passwort wiedergeben aber mit ****, id ausgeben
-
 public class UserHandler implements RouteHandler {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
+    private ObjectMapper mapper;
     private UserService service;
     private AuthService auth;
+    private HttpResponses resp;
 
-    public UserHandler(UserService service, AuthService auth) {
+    public UserHandler(ObjectMapper mapper, UserService service, AuthService auth) {
+        if (mapper == null) throw new IllegalArgumentException("mapper null");
+        this.mapper = mapper;
         this.service = service;
         this.auth = auth;
+        this.resp = new HttpResponses(mapper);
     }
 
     @Override
@@ -49,44 +46,37 @@ public class UserHandler implements RouteHandler {
 
             UUID userId = UUID.fromString(matcher.group(1));
 
-            if ("GET".equals(method)) {
-                profile(exchange, userId);
-                return;
-            }
-            if ("PUT".equals(method)) {
-                updateProfile(exchange, userId);
-                return;
-            }
+            if ("GET".equals(method)) { profile(exchange, userId); return; }
+            if ("PUT".equals(method)) { updateProfile(exchange, userId); return; }
         }
 
-        exchange.sendResponseHeaders(404, -1);
+        // vorher: exchange.sendResponseHeaders(404, -1);
+        resp.error(exchange, 404, "not found");
     }
 
     private void register(HttpExchange ex) throws IOException {
         try (InputStream in = ex.getRequestBody()) {
-            UserCredentials creds = MAPPER.readValue(in, UserCredentials.class);
+            UserCredentials creds = mapper.readValue(in, UserCredentials.class);
             User u = service.register(creds.username, creds.password);
-            byte[] json = MAPPER.writeValueAsBytes(new UserResponse(u.getId(), u.getUsername()));
-            sendJson(ex, 201, json);
+            resp.json(ex, 201, new UserResponse(u.getId(), u.getUsername()));
         } catch (IllegalArgumentException e) {
-            sendText(ex, 400, e.getMessage());
+            resp.error(ex, 400, e.getMessage());
         } catch (IllegalStateException e) {
-            sendText(ex, 409, e.getMessage());
+            resp.error(ex, 409, e.getMessage());
         }
     }
 
     private void login(HttpExchange ex) throws IOException {
         try (InputStream in = ex.getRequestBody()) {
-            UserCredentials creds = MAPPER.readValue(in, UserCredentials.class);
+            UserCredentials creds = mapper.readValue(in, UserCredentials.class);
             String token = service.login(creds.username, creds.password);
-            byte[] json = MAPPER.writeValueAsBytes(new TokenResponse(token));
-            sendJson(ex, 200, json);
+            resp.json(ex, 200, new TokenResponse(token));
         } catch (IllegalArgumentException e) {
-            // aus validateCredentials -> 400
-            sendText(ex, 400, e.getMessage()); // "username blank" / "password blank"
+            // validateCredentials -> 400
+            resp.error(ex, 400, e.getMessage());
         } catch (SecurityException e) {
             // falsche Credentials -> 401
-            sendText(ex, 401, "invalid credentials");
+            resp.error(ex, 401, "invalid credentials");
         }
     }
 
@@ -95,41 +85,34 @@ public class UserHandler implements RouteHandler {
             String authHeader = ex.getRequestHeaders().getFirst("Authorization");
             UUID userId = auth.userIdFromAuthHeader(authHeader);
             User u = service.getProfile(userId);
-            byte[] json = MAPPER.writeValueAsBytes(new UserResponse(u.getId(), u.getUsername()));
-            sendJson(ex, 200, json);
+            resp.json(ex, 200, new UserResponse(u.getId(), u.getUsername()));
         } catch (IllegalArgumentException e) {
-            sendText(ex, 401, e.getMessage());
+            resp.error(ex, 401, e.getMessage());
         }
     }
 
     private void profile(HttpExchange ex, UUID userId) throws IOException {
-        // Auth-Pflicht
         UUID authUserId;
         try {
             authUserId = auth.requireUserId(ex);
         } catch (IllegalArgumentException e) {
-            // kein / ungültiger Authorization-Header
-            sendText(ex, 401, e.getMessage());
+            resp.error(ex, 401, e.getMessage()); // z.B. "token expired"
             return;
         }
 
-        // Nutzer darf nur sein eigenes Profil sehen
         if (!authUserId.equals(userId)) {
-            sendText(ex, 403, "forbidden");
+            resp.error(ex, 403, "forbidden");
             return;
         }
 
         try {
             User u = service.getProfile(userId);
-
             mrp.dto.UserRatingStats stats = service.getUserRatingStats(userId);
 
             UserProfileResponse dto = toProfileResponse(u, stats.totalRatings, stats.averageScore);
-            byte[] json = MAPPER.writeValueAsBytes(dto);
-            sendJson(ex, 200, json);
+            resp.json(ex, 200, dto);
         } catch (IllegalArgumentException e) {
-            // user not found
-            sendText(ex, 404, e.getMessage());
+            resp.error(ex, 404, e.getMessage());
         }
     }
 
@@ -138,26 +121,25 @@ public class UserHandler implements RouteHandler {
         try {
             authUserId = auth.requireUserId(ex);
         } catch (IllegalArgumentException e) {
-            sendText(ex, 401, e.getMessage());
+            resp.error(ex, 401, e.getMessage());
             return;
         }
 
         if (!authUserId.equals(userId)) {
-            sendText(ex, 403, "forbidden");
+            resp.error(ex, 403, "forbidden");
             return;
         }
 
         try (InputStream in = ex.getRequestBody()) {
-            UserProfileUpdate update = MAPPER.readValue(in, UserProfileUpdate.class);
+            UserProfileUpdate update = mapper.readValue(in, UserProfileUpdate.class);
             User u = service.updateProfile(userId, update.email, update.favoriteGenre);
 
             mrp.dto.UserRatingStats stats = service.getUserRatingStats(userId);
 
             UserProfileResponse dto = toProfileResponse(u, stats.totalRatings, stats.averageScore);
-            byte[] json = MAPPER.writeValueAsBytes(dto);
-            sendJson(ex, 200, json);
+            resp.json(ex, 200, dto);
         } catch (IllegalArgumentException e) {
-            sendText(ex, 400, e.getMessage());
+            resp.error(ex, 400, e.getMessage());
         }
     }
 
@@ -170,18 +152,5 @@ public class UserHandler implements RouteHandler {
         dto.totalRatings = totalRatings;
         dto.averageScore = averageScore;
         return dto;
-    }
-
-
-    private void sendJson(HttpExchange ex, int status, byte[] body) throws IOException {
-        ex.getResponseHeaders().set("Content-Type", "application/json");
-        ex.sendResponseHeaders(status, body.length);
-        try (OutputStream os = ex.getResponseBody()) { os.write(body); }
-    }
-    private void sendText(HttpExchange ex, int status, String msg) throws IOException {
-        byte[] data = msg.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        ex.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
-        ex.sendResponseHeaders(status, data.length);
-        try (OutputStream os = ex.getResponseBody()) { os.write(data); }
     }
 }
