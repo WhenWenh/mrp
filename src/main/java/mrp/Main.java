@@ -65,14 +65,14 @@ public class Main {
         RecommendationService recommendationService = new RecommendationService(ratingRepo, mediaRepo);
         LeaderboardService leaderboardService = new LeaderboardService(userRepo);
 
-        UserHandler userHandler = new UserHandler(userService, authService);
+        UserHandler userHandler = new UserHandler(mapper, userService, authService);
         MediaHandler mediaHandler = new MediaHandler(mapper, mediaService, authService);
         RatingHandler ratingHandler = new RatingHandler(mapper, ratingService, authService);
         FavoriteHandler favoriteHandler = new FavoriteHandler(mapper, favoriteService, authService);
         RecommendationHandler recommendationHandler = new RecommendationHandler(mapper, recommendationService, authService);
         LeaderboardHandler leaderboardHandler = new LeaderboardHandler(mapper, leaderboardService, authService);
 
-        Router router = new Router("/api");
+        Router router = new Router(mapper,"/api");
 
         // User
         router.add("POST", "^/users/register$", userHandler);

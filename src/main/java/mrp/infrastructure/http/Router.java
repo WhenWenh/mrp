@@ -14,12 +14,14 @@ import java.util.regex.Pattern;
 
 public class Router {
 
+    private HttpResponses responses;
     private String basePath;
     private List<Route> routes = new ArrayList<>();
     private ObjectMapper mapper = new ObjectMapper();
 
-    public Router(String basePath) {
+    public Router(ObjectMapper mapper, String basePath) {
         this.basePath = basePath == null ? "" : basePath;
+        this.responses = new HttpResponses(mapper);
     }
 
     public void add(String method, String regex, RouteHandler handler) {
@@ -45,11 +47,11 @@ public class Router {
                 }
             }
 
-            sendText(exchange, 404, "Not Found");
+            responses.error(exchange, 404, "not found");
         } catch (Exception e) {
             e.printStackTrace();
             try {
-                sendText(exchange, 500, "Internal Server Error");
+                responses.error(exchange, 500, "internal server error");
             } catch (IOException ioException) {
                 ioException.printStackTrace();
             }
