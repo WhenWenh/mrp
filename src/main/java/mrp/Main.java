@@ -8,6 +8,7 @@ import mrp.application.MediaService;
 import mrp.application.UserService;
 import mrp.application.RatingService;
 import mrp.application.FavoriteService;
+import mrp.application.RecommendationService;
 
 import mrp.domain.ports.AuthTokenService;
 import mrp.domain.ports.MediaRepository;
@@ -20,6 +21,7 @@ import mrp.infrastructure.http.Router;
 import mrp.infrastructure.http.UserHandler;
 import mrp.infrastructure.http.RatingHandler;
 import mrp.infrastructure.http.FavoriteHandler;
+import mrp.infrastructure.http.RecommendationHandler;
 
 import mrp.infrastructure.persistence.JdbcMediaRepository;
 import mrp.infrastructure.persistence.JdbcUserRepository;
@@ -38,6 +40,8 @@ public class Main {
 
         //TODO: Router eventuel verschieben
         //TODO: Singelton desgin pattern überprüfen
+        //TODO: Fehlermeldungen auf json umbauen
+        //TODO: Abgelaufene Token prüfen und löschen in der DB (eventuell in der Login Funktion vor Login Logik abrufen
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
@@ -56,11 +60,13 @@ public class Main {
         MediaService mediaService = new MediaService(mediaRepo);
         RatingService ratingService = new RatingService(ratingRepo, mediaRepo);
         FavoriteService favoriteService = new FavoriteService(favoriteRepo, mediaRepo);
+        RecommendationService recommendationService = new RecommendationService(ratingRepo, mediaRepo);
 
         UserHandler userHandler = new UserHandler(userService, authService);
         MediaHandler mediaHandler = new MediaHandler(mapper, mediaService, authService);
         RatingHandler ratingHandler = new RatingHandler(mapper, ratingService, authService);
         FavoriteHandler favoriteHandler = new FavoriteHandler(mapper, favoriteService, authService);
+        RecommendationHandler recommendationHandler = new RecommendationHandler(mapper, recommendationService, authService);
 
         Router router = new Router("/api");
 
@@ -135,6 +141,11 @@ public class Main {
         });
         router.add("GET", "^/users/me/favorites$", (ex, m) -> {
             favoriteHandler.listMine(ex);
+        });
+
+        //Recommendation
+        router.add("GET", "^/users/me/recommendations$", (ex, m) -> {
+            recommendationHandler.listMine(ex);
         });
 
     }

@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+//TODO: Fehlermeldung bei Falschen Einträgen wie Type
+
 public class MediaService {
 
     protected MediaRepository repo;
