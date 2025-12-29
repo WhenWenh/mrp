@@ -1,7 +1,9 @@
 package mrp.domain.ports;
 
 import mrp.domain.model.User;
+import mrp.domain.model.LeaderboardEntry;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,8 +21,9 @@ public interface UserRepository {
 
     Optional<User> findById(UUID id);
 
-    // Erweiterbar für spätere Meilensteine:
-    default void updateProfile(UUID id, String email, String favoriteGenre) {
+    void updateProfile(UUID id, String email, String favoriteGenre);
+
+    default List<LeaderboardEntry> leaderboardByRatings(int limit, int offset) {
         throw new UnsupportedOperationException("not implemented");
     }
 }
