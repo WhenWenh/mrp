@@ -84,6 +84,7 @@ public class RecommendationService {
 
         MediaType preferredType = mostWeightedType(typeWeights);
         String preferredTypeStr = preferredType != null ? preferredType.name() : null;
+        Integer preferredAge = preferredAgeMax(history);
 
         // 3) Kandidaten NICHT "alle Medien": hol gezielt pro Top-Genre aus der History
         List<String> topGenres = topKeysByWeight(genreWeights, 3);
@@ -95,8 +96,9 @@ public class RecommendationService {
                     null,               // query
                     preferredTypeStr,    // mediaType (String)
                     g,                  // genre
-                    null, null,          // yearFrom/yearTo
-                    null,               // ageMax
+                    null,          // yearFrom
+                    null,               //yearTo
+                    preferredAge,       // ageMax
                     "averageScore",      // sortBy
                     "desc",             // sortDir
                     50,                 // limit
@@ -192,6 +194,28 @@ public class RecommendationService {
                 best = e.getKey();
             }
         }
+        return best;
+    }
+
+    private Integer preferredAgeMax(List<Rating> history) {
+        Integer best = null;
+
+        for (Rating r : history) {
+            if (r == null || r.getMediaId() == null) continue;
+
+            MediaEntry m = media.findById(r.getMediaId()).orElse(null);
+            if (m == null) continue;
+
+            Integer age = m.getAgeRestriction();
+            if (age == null) continue;
+
+            // konservativ: die kleinste bisher bewertete Altersfreigabe
+            // nichts empfehlen, was "härter" ist als bisheriges Verhalten
+            if (best == null || age < best) {
+                best = age;
+            }
+        }
+
         return best;
     }
 
