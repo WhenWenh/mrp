@@ -16,6 +16,7 @@ public class LeaderboardHandler {
     private ObjectMapper mapper;
     private LeaderboardService service;
     private AuthService auth;
+    private HttpResponses resp;
 
     public LeaderboardHandler(ObjectMapper mapper, LeaderboardService service, AuthService auth) {
         if (mapper == null) throw new IllegalArgumentException("mapper null");
@@ -24,30 +25,48 @@ public class LeaderboardHandler {
         this.mapper = mapper;
         this.service = service;
         this.auth = auth;
+        this.resp = new HttpResponses(mapper);
     }
 
     // GET /leaderboard?limit=10&offset=0
     public void list(HttpExchange ex) throws IOException {
-        auth.requireAuth(ex);
+        try {
+            auth.requireAuth(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
 
         int limit = parseIntQuery(ex, "limit", 10);
         int offset = parseIntQuery(ex, "offset", 0);
 
-        List<LeaderboardEntry> entries = service.getLeaderboard(limit, offset);
-        List<LeaderboardEntryResponse> resp = new ArrayList<>();
+        try {
+            List<LeaderboardEntry> entries = service.getLeaderboard(limit, offset);
+            List<LeaderboardEntryResponse> responseList = new ArrayList<>();
 
-        int rank = offset + 1;
-        for (LeaderboardEntry e : entries) {
-            resp.add(new LeaderboardEntryResponse(rank, e.getUserId(), e.getUsername(), e.getRatingCount()));
-            rank++;
+            int rank = offset + 1;
+            for (LeaderboardEntry e : entries) {
+                responseList.add(new LeaderboardEntryResponse(
+                        rank,
+                        e.getUserId(),
+                        e.getUsername(),
+                        e.getRatingCount()
+                ));
+                rank++;
+            }
+
+            resp.json(ex, 200, responseList);
+
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            resp.error(
+                    ex,
+                    400,
+                    (msg == null || msg.isBlank()) ? "bad request" : msg
+            );
         }
-
-        byte[] json = mapper.writeValueAsBytes(resp);
-        ex.getResponseHeaders().add("Content-Type", "application/json");
-        ex.sendResponseHeaders(200, json.length);
-        ex.getResponseBody().write(json);
-        ex.close();
     }
+
 
     private int parseIntQuery(HttpExchange ex, String key, int defaultValue) {
         try {
