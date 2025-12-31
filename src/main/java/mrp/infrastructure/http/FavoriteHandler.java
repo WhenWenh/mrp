@@ -13,6 +13,7 @@ public class FavoriteHandler {
     private ObjectMapper mapper;
     private FavoriteService service;
     private AuthService auth;
+    private HttpResponses resp;
 
     public FavoriteHandler(ObjectMapper mapper, FavoriteService service, AuthService auth) {
         if (mapper == null) throw new IllegalArgumentException("mapper null");
@@ -21,52 +22,74 @@ public class FavoriteHandler {
         this.mapper = mapper;
         this.service = service;
         this.auth = auth;
+        this.resp = new HttpResponses(mapper);
     }
 
     // POST /media/{mediaId}/favorite
     public void add(HttpExchange ex, UUID mediaId) throws IOException {
+        UUID userId;
         try {
-            UUID userId = auth.requireUserId(ex);
-            service.add(userId, mediaId);
-            sendEmpty(ex, 204);
+            userId = auth.requireUserId(ex);
         } catch (IllegalArgumentException e) {
-            if ("media not found".equalsIgnoreCase(e.getMessage())) sendError(ex, 404, "not found");
-            else sendError(ex, 400, e.getMessage() != null ? e.getMessage() : "bad request");
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
+
+        try {
+            service.add(userId, mediaId);
+            resp.empty(ex, 204);
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+
+            if ("media not found".equalsIgnoreCase(msg)) {
+                resp.error(ex, 404, msg);
+            } else {
+                resp.error(ex, 400, msg.isBlank() ? "bad request" : msg);
+            }
+        } catch (RuntimeException e) {
+            resp.error(ex, 500, e.getMessage());
         }
     }
 
     // DELETE /media/{mediaId}/favorite
     public void remove(HttpExchange ex, UUID mediaId) throws IOException {
-        UUID userId = auth.requireUserId(ex);
-        service.remove(userId, mediaId);
-        sendEmpty(ex, 204);
+        UUID userId;
+        try {
+            userId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
+
+        try {
+            service.remove(userId, mediaId);
+            resp.empty(ex, 204);
+        }catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            if ("media not found".equalsIgnoreCase(msg)) {
+                resp.error(ex, 404, msg);
+            }else {
+                resp.error(ex, 400, msg.isBlank() ? "bad request" : msg);
+            }
+        }
     }
 
     // GET /users/me/favorites
     public void listMine(HttpExchange ex) throws IOException {
-        UUID userId = auth.requireUserId(ex);
-        byte[] json = mapper.writeValueAsBytes(service.listMine(userId));
-        sendJson(ex, 200, json);
-    }
+        UUID userId;
+        try {
+            userId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
 
-    private void sendJson(HttpExchange ex, int status, byte[] json) throws IOException {
-        ex.getResponseHeaders().add("Content-Type", "application/json");
-        ex.sendResponseHeaders(status, json.length);
-        ex.getResponseBody().write(json);
-        ex.close();
-    }
-
-    private void sendError(HttpExchange ex, int code, String msg) throws IOException {
-        byte[] body = ("{\"error\":\"" + (msg == null ? "" : msg.replace("\"", "\\\"")) + "\"}")
-                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        ex.getResponseHeaders().add("Content-Type", "application/json");
-        ex.sendResponseHeaders(code, body.length);
-        ex.getResponseBody().write(body);
-        ex.close();
-    }
-
-    private void sendEmpty(HttpExchange ex, int code) throws IOException {
-        ex.sendResponseHeaders(code, -1);
-        ex.close();
+        try {
+            byte[] json = mapper.writeValueAsBytes(service.listMine(userId));
+            resp.json(ex, 200, json);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 400, e.getMessage() == null || e.getMessage().isBlank() ? "bad request" : e.getMessage()
+            );
+        }
     }
 }

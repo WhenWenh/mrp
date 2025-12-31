@@ -34,6 +34,8 @@ public class FavoriteService {
         if (userId == null) throw new IllegalArgumentException("userId null");
         if (mediaId == null) throw new IllegalArgumentException("mediaId null");
 
+        media.findById(mediaId).orElseThrow(() -> new IllegalArgumentException("media not found"));
+
         favorites.remove(userId, mediaId); // wenn nicht da: OK (idempotent)
     }
 
