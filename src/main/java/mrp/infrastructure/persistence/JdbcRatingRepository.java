@@ -53,6 +53,18 @@ public class JdbcRatingRepository implements RatingRepository {
                     rating.getLikeCount()
             );
         } catch (SQLException e) {
+            // duplicate key / unique violation
+            if (e instanceof org.postgresql.util.PSQLException) {
+                org.postgresql.util.PSQLException pe = (org.postgresql.util.PSQLException) e;
+
+                String constraint = pe.getServerErrorMessage() != null
+                        ? pe.getServerErrorMessage().getConstraint()
+                        : null;
+
+                if ("ux_user_media_unique_rating".equalsIgnoreCase(constraint)) {
+                    throw new IllegalStateException("rating already exists");
+                }
+            }
             throw new RuntimeException("create rating failed", e);
         }
     }

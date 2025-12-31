@@ -6,16 +6,20 @@ import mrp.application.RatingService;
 import mrp.dto.RatingRequest;
 import mrp.infrastructure.security.AuthService;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.UUID;
 
-//TODO: Fehlermeldung wenn einer schon Rating gemacht - bis dato ein 500 error
 
 public class RatingHandler {
     private ObjectMapper mapper;
     private RatingService service;
     private AuthService auth;
+    private HttpResponses resp;
 
     public RatingHandler(ObjectMapper mapper, RatingService service, AuthService auth) {
         if(mapper == null){
@@ -30,154 +34,217 @@ public class RatingHandler {
         this.mapper = mapper;
         this.service = service;
         this.auth = auth;
+        this.resp = new HttpResponses(mapper);
     }
 
     // POST /media/{mediaId}/ratings
     public void rateMedia(HttpExchange ex, UUID mediaId) throws IOException {
         String ct = ex.getRequestHeaders().getFirst("Content-Type");
         if(ct == null || !ct.toLowerCase().contains("application/json")){
-            sendError(ex, 405, "unsupported Media Type");
+            resp.error(ex, 405, "unsupported media type");
+            return;
+        }
+
+        UUID userId;
+        try {
+            userId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
             return;
         }
 
         try(InputStream in = ex.getRequestBody()){
-            UUID userId = auth.requireUserId(ex);
             RatingRequest req = mapper.readValue(in, RatingRequest.class);
-            var resp = service.create(userId, mediaId, req);
-            sendJson(ex, 201, mapper.writeValueAsBytes(resp));
+            Object rated = service.create(userId, mediaId, req);
+            resp.json(ex, 201, rated);
+        }catch (InvalidFormatException e) {
+            // z.B. falsches Enum / falscher Typ im JSON
+            resp.error(ex, 400, "invalid value");
+
+        } catch (JsonProcessingException e) {
+            // kaputtes JSON
+            resp.error(ex, 400, "invalid json");
+
+        }catch (IllegalStateException e) {
+            //duplicate rating
+            String msg = e.getMessage();
+            if (msg != null && "rating already exists".equalsIgnoreCase(msg)) {
+                resp.error(ex, 409, "rating already exists for this media");
+            } else {
+                resp.error(ex, 409, (msg == null || msg.isBlank()) ? "conflict" : msg);
+            }
         } catch(IllegalArgumentException e){
             String msg = e.getMessage();
             if("media not found".equalsIgnoreCase(msg)){
-                sendError(ex, 404, "not found");
+                resp.error(ex, 404, "not found");
             }else{
-                sendError(ex, 400, msg != null ? msg : "bad request");
+                resp.error(ex, 400, e.getMessage());
             }
         } catch(SecurityException e){
-            sendError(ex, 403, "forbidden");
+            resp.error(ex, 403, "forbidden");
         }
     }
 
     // GET /media/{mediaId}/ratings
     public void listForMedia(HttpExchange ex, UUID mediaId) throws IOException {
-        UUID requesterId =  auth.requireUserId(ex);
+        UUID userId;
+        try {
+            userId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
+
         try{
-            var list = service.listForMedia(mediaId, requesterId);
-            sendJson(ex, 200, mapper.writeValueAsBytes(list));
+            Object list = service.listForMedia(mediaId, userId);
+            resp.json(ex, 200, list);
         } catch(IllegalArgumentException e){
                 String msg =  e.getMessage();
                 if("media not found".equalsIgnoreCase(msg)){
-                    sendError(ex, 404, "not found");
+                    resp.error(ex, 404, "not found");
                 } else{
-                    sendError(ex, 400, msg != null ? msg : "bad request");
+                    resp.error(ex, 400, e.getMessage());
                 }
         }
     }
 
     // GET /users/me/ratings
     public void listMine(HttpExchange ex) throws IOException {
-        UUID userId =  auth.requireUserId(ex);
-        var list = service.listForUser(userId);
-        sendJson(ex, 200, mapper.writeValueAsBytes(list));
+        UUID userId;
+        try {
+            userId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
+
+        Object list = service.listForUser(userId);
+        resp.json(ex, 200, list);
     }
 
     // PUT /ratings/{ratingId}
     public void update(HttpExchange ex, UUID ratingId) throws IOException {
         String ct = ex.getRequestHeaders().getFirst("Content-Type");
-        if(ct == null || !ct.toLowerCase().contains("application/json")){
-            sendError(ex, 405, "unsupported Media Type");
+        if (ct == null || !ct.toLowerCase().contains("application/json")) {
+            resp.error(ex, 405, "unsupported media type");
             return;
         }
 
-        try(InputStream in = ex.getRequestBody()){
-            UUID userId = auth.requireUserId(ex);
+        UUID userId;
+        try {
+            userId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage()); // z.B. token expired
+            return;
+        }
+
+        try (InputStream in = ex.getRequestBody()) {
             RatingRequest req = mapper.readValue(in, RatingRequest.class);
             service.update(ratingId, userId, req);
-            sendEmpty(ex, 204);
-        } catch(IllegalArgumentException e){
+            resp.empty(ex, 204);
+
+        } catch (InvalidFormatException e) {
+            // z.B. falsches Enum / falscher Typ im JSON
+            resp.error(ex, 400, "invalid value");
+
+        } catch (JsonProcessingException e) {
+            // kaputtes JSON
+            resp.error(ex, 400, "invalid json");
+
+        } catch (IllegalArgumentException e) {
             String msg = e.getMessage();
-            if("rating not found".equalsIgnoreCase(msg)){
-                sendError(ex, 404, "not found");
-            } else{
-                sendError(ex, 400, msg != null ? msg : "bad request");
+            if (msg != null && "rating not found".equalsIgnoreCase(msg)) {
+                resp.error(ex, 404, "not found");
+            } else {
+                resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
             }
-        } catch(SecurityException e){
-            sendError(ex, 403, "forbidden");
+
+        } catch (SecurityException e) {
+            resp.error(ex, 403, "forbidden");
         }
     }
 
+
     // DELETE /ratings/{ratingId}
     public void delete(HttpExchange ex, UUID ratingId) throws IOException {
+        UUID userId;
+        try {
+            userId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage()); // token expired / missing header
+            return;
+        }
+
         try{
-            UUID userId = auth.requireUserId(ex);
             service.delete(ratingId, userId);
-            sendEmpty(ex, 204);
+            resp.empty(ex, 204);
         } catch(IllegalArgumentException e){
             String msg = e.getMessage();
             if("rating not found".equalsIgnoreCase(msg)){
-                sendError(ex, 404, "not found");
+                resp.error(ex, 404, "not found");
             } else{
-                sendError(ex, 400, msg != null ? msg : "bad request");
+                resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
             }
         } catch(SecurityException e){
-            sendError(ex, 403, "forbidden");
+            resp.error(ex, 403, "forbidden");
         }
     }
 
     // POST ratings/{{ratingId}}/confirm-comment
     public void confirmComment(HttpExchange ex, UUID ratingId) throws IOException {
+        UUID userId;
         try {
-            UUID userId = auth.requireUserId(ex);
-            service.confirmComment(ratingId, userId);
-            sendEmpty(ex, 204);
+            userId = auth.requireUserId(ex);
         } catch (IllegalArgumentException e) {
-            sendError(ex, 404, "not found");
+            resp.error(ex, 401, e.getMessage()); // token expired / missing header
+            return;
+        }
+
+        try {
+            service.confirmComment(ratingId, userId);
+            resp.empty(ex, 204);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 404, "not found");
         } catch (SecurityException se) {
-            sendError(ex, 403, "forbidden");
+            resp.error(ex, 403, "forbidden");
         }
     }
 
     // POST ratings/{{ratingId}}/like
     public void like(HttpExchange ex, UUID ratingId) throws IOException {
+        UUID userId;
         try {
-            UUID userId = auth.requireUserId(ex);
+            userId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
+
+        try {
             service.like(ratingId, userId);
-            sendEmpty(ex, 204);
+            resp.empty(ex, 204);
         } catch (IllegalArgumentException e) {
             String msg = e.getMessage();
-            if ("cannot like own rating".equalsIgnoreCase(msg)) sendError(ex, 400, msg);
-            else sendError(ex, 400, msg != null ? msg : "bad request");
+            resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
         }
     }
 
     // DELETE ratings/{{ratingId}}/like
     public void unlike(HttpExchange ex, UUID ratingId) throws IOException {
+        UUID userId;
         try {
-            UUID userId = auth.requireUserId(ex);
-            service.unlike(ratingId, userId);
-            sendEmpty(ex, 204);
+            userId = auth.requireUserId(ex);
         } catch (IllegalArgumentException e) {
-            sendError(ex, 400, e.getMessage() != null ? e.getMessage() : "bad request");
+            resp.error(ex, 401, e.getMessage());
+            return;
         }
-    }
 
-    private void sendJson(HttpExchange ex, int status, byte[] json) throws IOException {
-        ex.getResponseHeaders().add("Content-Type", "application/json");
-        ex.sendResponseHeaders(status, json.length);
-        ex.getResponseBody().write(json);
-        ex.close();
-    }
-
-    private void sendError(HttpExchange ex, int code, String msg) throws IOException {
-        byte[] body = ("{\"error\":\"" + msg + "\"}")
-                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        ex.getResponseHeaders().add("Content-Type", "application/json");
-        ex.sendResponseHeaders(code, body.length);
-        ex.getResponseBody().write(body);
-        ex.close();
-    }
-
-    private void sendEmpty(HttpExchange ex, int code) throws IOException {
-        ex.sendResponseHeaders(code, -1);
-        ex.close();
+        try {
+            service.unlike(ratingId, userId);
+            resp.empty(ex, 204);
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
+        }
     }
 }

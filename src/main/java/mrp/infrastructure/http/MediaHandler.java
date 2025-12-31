@@ -38,15 +38,17 @@ public class MediaHandler {
             resp.error(ex, 405, "unsupported media type");
             return;
         }
-        try (InputStream in = ex.getRequestBody()) {
-            UUID userId;
-            try {
-                userId = auth.requireUserId(ex);
-            } catch (IllegalArgumentException e) {
-                resp.error(ex, 401, e.getMessage());
-                return;
-            }
 
+        UUID userId;
+        try {
+            userId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
+
+
+        try (InputStream in = ex.getRequestBody()) {
             MediaRequest req = mapper.readValue(in, MediaRequest.class);
             Object created = service.create(userId, req);
             resp.json(ex, 201, created);
@@ -86,18 +88,27 @@ public class MediaHandler {
             return;
         }
 
-        try (InputStream in = ex.getRequestBody()) {
-            UUID userId;
-            try {
-                userId = auth.requireUserId(ex);
-            } catch (IllegalArgumentException e) {
-                resp.error(ex, 401, e.getMessage());
-                return;
-            }
+        UUID userId;
+        try {
+            userId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
 
+
+        try (InputStream in = ex.getRequestBody()) {
             MediaRequest req = mapper.readValue(in, MediaRequest.class);
             Object updated = service.update(id, userId, req);
             resp.json(ex, 200, updated);
+        }catch (InvalidFormatException e) {
+            // z.B. falsches Enum / falscher Typ im JSON
+            resp.error(ex, 400, "invalid value");
+
+        } catch (JsonProcessingException e) {
+            // kaputtes JSON
+            resp.error(ex, 400, "invalid json");
+
         } catch (IllegalArgumentException e) {
             String msg = e.getMessage();
             if ("media not found".equalsIgnoreCase(msg)) {
