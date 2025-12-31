@@ -39,19 +39,28 @@ public class RecommendationHandler {
         String q = ex.getRequestURI().getQuery();
         if (q != null) {
             for (String part : q.split("&")) {
-                String[] kv = part.split("=");
+                String[] kv = part.split("=", 2);
                 if (kv.length == 2 && "limit".equalsIgnoreCase(kv[0])) {
                     try {
                         limit = Integer.parseInt(kv[1]);
-                    } catch (NumberFormatException ignored) { }
+                    } catch (NumberFormatException e) {
+                        resp.error(ex, 400, "limit must be an integer");
+                        return;
+                    }
                 }
             }
         }
 
-        byte[] json = mapper.writeValueAsBytes(service.recommendForUser(userId, limit));
-        ex.getResponseHeaders().add("Content-Type", "application/json");
-        ex.sendResponseHeaders(200, json.length);
-        ex.getResponseBody().write(json);
-        ex.close();
+        try {
+            resp.json(ex, 200, service.recommendForUser(userId, limit));
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            resp.error(
+                    ex,
+                    400,
+                    (msg == null || msg.isBlank()) ? "bad request" : msg
+            );
+        }
     }
+
 }
