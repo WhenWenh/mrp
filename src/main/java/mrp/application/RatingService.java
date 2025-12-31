@@ -193,12 +193,12 @@ public class RatingService {
 
         Rating r = ratings.findById(ratingId).orElseThrow(() -> new IllegalArgumentException("rating not found"));
         if(r.getUserId().equals(actorUserId)) {
-            throw new IllegalArgumentException("forbidden: cannot like own rating");
+            throw new SecurityException("forbidden: cannot like own rating");
         }
 
         boolean ok = ratings.addLike(ratingId, actorUserId);
         if (!ok) {
-            throw new IllegalArgumentException("already liked or not found");
+            throw new IllegalArgumentException("already liked");
         }
     }
 
@@ -206,8 +206,13 @@ public class RatingService {
         if (ratingId == null) throw new IllegalArgumentException("id null");
         if (actorUserId == null) throw new IllegalArgumentException("userId null");
 
+        Rating r = ratings.findById(ratingId).orElseThrow(() -> new IllegalArgumentException("rating not found"));
+        if(r.getUserId().equals(actorUserId)) {
+            throw new SecurityException("forbidden: cannot like won rating to begin with");
+        }
+
         boolean ok = ratings.removeLike(ratingId, actorUserId);
-        if (!ok) throw new IllegalArgumentException("not liked or not found");
+        if (!ok) throw new IllegalArgumentException("not liked");
     }
 
     /**

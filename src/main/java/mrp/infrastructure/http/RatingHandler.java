@@ -69,18 +69,18 @@ public class RatingHandler {
             //duplicate rating
             String msg = e.getMessage();
             if (msg != null && "rating already exists".equalsIgnoreCase(msg)) {
-                resp.error(ex, 409, "rating already exists for this media");
+                resp.error(ex, 409, msg);
             } else {
                 resp.error(ex, 409, (msg == null || msg.isBlank()) ? "conflict" : msg);
             }
         } catch(IllegalArgumentException e){
             String msg = e.getMessage();
             if("media not found".equalsIgnoreCase(msg)){
-                resp.error(ex, 404, "not found");
+                resp.error(ex, 404, msg);
             }else{
                 resp.error(ex, 400, e.getMessage());
             }
-        } catch(SecurityException e){
+        } catch(SecurityException se){
             resp.error(ex, 403, "forbidden");
         }
     }
@@ -101,7 +101,7 @@ public class RatingHandler {
         } catch(IllegalArgumentException e){
                 String msg =  e.getMessage();
                 if("media not found".equalsIgnoreCase(msg)){
-                    resp.error(ex, 404, "not found");
+                    resp.error(ex, 404, msg);
                 } else{
                     resp.error(ex, 400, e.getMessage());
                 }
@@ -118,8 +118,12 @@ public class RatingHandler {
             return;
         }
 
-        Object list = service.listForUser(userId);
-        resp.json(ex, 200, list);
+        try {
+            Object list = service.listForUser(userId);
+            resp.json(ex, 200, list);
+        } catch(IllegalArgumentException e){
+            resp.error(ex, 400, e.getMessage());
+        }
     }
 
     // PUT /ratings/{ratingId}
@@ -159,8 +163,8 @@ public class RatingHandler {
                 resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
             }
 
-        } catch (SecurityException e) {
-            resp.error(ex, 403, "forbidden");
+        } catch (SecurityException se) {
+            resp.error(ex, 403, se.getMessage());
         }
     }
 
@@ -181,12 +185,12 @@ public class RatingHandler {
         } catch(IllegalArgumentException e){
             String msg = e.getMessage();
             if("rating not found".equalsIgnoreCase(msg)){
-                resp.error(ex, 404, "not found");
+                resp.error(ex, 404, msg);
             } else{
                 resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
             }
-        } catch(SecurityException e){
-            resp.error(ex, 403, "forbidden");
+        } catch(SecurityException se){
+            resp.error(ex, 403, se.getMessage());
         }
     }
 
@@ -204,7 +208,7 @@ public class RatingHandler {
             service.confirmComment(ratingId, userId);
             resp.empty(ex, 204);
         } catch (IllegalArgumentException e) {
-            resp.error(ex, 404, "not found");
+            resp.error(ex, 404, e.getMessage());
         } catch (SecurityException se) {
             resp.error(ex, 403, "forbidden");
         }
@@ -223,10 +227,13 @@ public class RatingHandler {
         try {
             service.like(ratingId, userId);
             resp.empty(ex, 204);
+        } catch (SecurityException se) {
+            resp.error(ex, 403, se.getMessage());
         } catch (IllegalArgumentException e) {
             String msg = e.getMessage();
             resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
         }
+
     }
 
     // DELETE ratings/{{ratingId}}/like
@@ -244,7 +251,13 @@ public class RatingHandler {
             resp.empty(ex, 204);
         } catch (IllegalArgumentException e) {
             String msg = e.getMessage();
-            resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
+            if("rating not found".equalsIgnoreCase(msg)){
+                resp.error(ex, 404, msg);
+            }else {
+                resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
+            }
+        } catch (SecurityException se) {
+            resp.error(ex, 403, se.getMessage());
         }
     }
 }
