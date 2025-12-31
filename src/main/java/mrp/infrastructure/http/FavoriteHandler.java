@@ -71,6 +71,8 @@ public class FavoriteHandler {
             }else {
                 resp.error(ex, 400, msg.isBlank() ? "bad request" : msg);
             }
+        } catch (RuntimeException e) {
+            resp.error(ex, 500, e.getMessage());
         }
     }
 
@@ -90,6 +92,8 @@ public class FavoriteHandler {
         } catch (IllegalArgumentException e) {
             resp.error(ex, 400, e.getMessage() == null || e.getMessage().isBlank() ? "bad request" : e.getMessage()
             );
+        } catch (RuntimeException e) {
+            resp.error(ex, 500, e.getMessage());
         }
     }
 }
