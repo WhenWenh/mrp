@@ -71,11 +71,10 @@ public class FavoriteHandler {
             }else {
                 resp.error(ex, 400, msg.isBlank() ? "bad request" : msg);
             }
-        } catch (RuntimeException e) {
-            resp.error(ex, 500, e.getMessage());
         }
     }
 
+    // GET /users/me/favorites
     // GET /users/me/favorites
     public void listMine(HttpExchange ex) throws IOException {
         UUID userId;
@@ -90,10 +89,14 @@ public class FavoriteHandler {
             byte[] json = mapper.writeValueAsBytes(service.listMine(userId));
             resp.json(ex, 200, json);
         } catch (IllegalArgumentException e) {
-            resp.error(ex, 400, e.getMessage() == null || e.getMessage().isBlank() ? "bad request" : e.getMessage()
+            resp.error(
+                    ex,
+                    400,
+                    e.getMessage() == null || e.getMessage().isBlank()
+                            ? "bad request"
+                            : e.getMessage()
             );
-        } catch (RuntimeException e) {
-            resp.error(ex, 500, e.getMessage());
         }
     }
+
 }
