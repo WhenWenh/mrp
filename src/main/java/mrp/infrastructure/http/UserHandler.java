@@ -74,9 +74,9 @@ public class UserHandler implements RouteHandler {
         } catch (IllegalArgumentException e) {
             // validateCredentials -> 400
             resp.error(ex, 400, e.getMessage());
-        } catch (SecurityException e) {
+        } catch (SecurityException se) {
             // falsche Credentials -> 401
-            resp.error(ex, 401, "invalid credentials");
+            resp.error(ex, 401, se.getMessage());
         }
     }
 

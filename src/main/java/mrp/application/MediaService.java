@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-//TODO: Fehlermeldung bei Falschen Einträgen wie Type
 
 public class MediaService {
 
@@ -60,9 +59,11 @@ public class MediaService {
         if (requesterId == null) throw new IllegalArgumentException("requesterId null");
         validateRequest(req);
 
-        if (!repo.isOwner(id, requesterId)) throw new SecurityException("forbidden: not the creator");
 
         MediaEntry current = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("media not found"));
+
+        if (!repo.isOwner(id, requesterId)) throw new SecurityException("forbidden: not the creator");
+
         current.setTitle(safeTrim(req.getTitle()));
         current.setDescription(req.getDescription());
         current.setMediaType(req.getMediaType());
@@ -78,8 +79,8 @@ public class MediaService {
     public void delete(UUID id, UUID requesterId) {
         if (id == null) throw new IllegalArgumentException("id null");
         if (requesterId == null) throw new IllegalArgumentException("requesterId null");
-        if (!repo.isOwner(id, requesterId)) throw new SecurityException("forbidden: not the creator");
         if (!repo.delete(id)) throw new IllegalArgumentException("media not found");
+        if (!repo.isOwner(id, requesterId)) throw new SecurityException("forbidden: not the creator");
     }
 
     public List<MediaResponse> search(MediaSearch s) {

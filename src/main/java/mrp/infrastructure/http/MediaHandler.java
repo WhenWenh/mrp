@@ -77,7 +77,7 @@ public class MediaHandler {
             Object one = service.get(id);
             resp.json(ex, 200, one);
         } catch (IllegalArgumentException e) {
-            resp.error(ex, 404, "not found");
+            resp.error(ex, 404, e.getMessage());
         }
     }
 
@@ -112,12 +112,12 @@ public class MediaHandler {
         } catch (IllegalArgumentException e) {
             String msg = e.getMessage();
             if ("media not found".equalsIgnoreCase(msg)) {
-                resp.error(ex, 404, "media not found");
+                resp.error(ex, 404, msg);
             } else {
                 resp.error(ex, 400, msg);
             }
         } catch (SecurityException se) {
-            resp.error(ex, 403, "forbidden");
+            resp.error(ex, 403, se.getMessage());
         }
     }
 
@@ -134,9 +134,16 @@ public class MediaHandler {
             service.delete(id, userId);
             resp.empty(ex, 204);
         } catch (IllegalArgumentException e) {
-            resp.error(ex, 404, "not found");
+            String msg = e.getMessage();
+
+            if (msg != null && "media not found".equalsIgnoreCase(msg)) {
+                resp.error(ex, 404, "not found");
+            } else {
+                resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
+            }
         } catch (SecurityException se) {
-            resp.error(ex, 403, "forbidden");
+            String msg = se.getMessage();
+            resp.error(ex, 403, msg);
         }
     }
 
