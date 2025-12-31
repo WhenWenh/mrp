@@ -13,6 +13,7 @@ public class RecommendationHandler {
     private ObjectMapper mapper;
     private RecommendationService service;
     private AuthService auth;
+    private HttpResponses resp;
 
     public RecommendationHandler(ObjectMapper mapper, RecommendationService service, AuthService auth) {
         if (mapper == null) throw new IllegalArgumentException("mapper null");
@@ -21,11 +22,18 @@ public class RecommendationHandler {
         this.mapper = mapper;
         this.service = service;
         this.auth = auth;
+        this.resp = new HttpResponses(mapper);
     }
 
     // GET /users/me/recommendations?limit=10
     public void listMine(HttpExchange ex) throws IOException {
-        UUID userId = auth.requireUserId(ex);
+        UUID userId;
+        try {
+            userId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
 
         int limit = 10;
         String q = ex.getRequestURI().getQuery();
@@ -33,7 +41,9 @@ public class RecommendationHandler {
             for (String part : q.split("&")) {
                 String[] kv = part.split("=");
                 if (kv.length == 2 && "limit".equalsIgnoreCase(kv[0])) {
-                    try { limit = Integer.parseInt(kv[1]); } catch (NumberFormatException ignored) { }
+                    try {
+                        limit = Integer.parseInt(kv[1]);
+                    } catch (NumberFormatException ignored) { }
                 }
             }
         }
