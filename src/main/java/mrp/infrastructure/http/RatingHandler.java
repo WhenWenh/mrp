@@ -41,7 +41,7 @@ public class RatingHandler {
     public void rateMedia(HttpExchange ex, UUID mediaId) throws IOException {
         String ct = ex.getRequestHeaders().getFirst("Content-Type");
         if(ct == null || !ct.toLowerCase().contains("application/json")){
-            resp.error(ex, 405, "unsupported media type");
+            resp.error(ex, 415, "unsupported media type");
             return;
         }
 
@@ -80,8 +80,6 @@ public class RatingHandler {
             }else{
                 resp.error(ex, 400, e.getMessage());
             }
-        } catch(SecurityException se){
-            resp.error(ex, 403, "forbidden");
         }
     }
 
@@ -130,7 +128,7 @@ public class RatingHandler {
     public void update(HttpExchange ex, UUID ratingId) throws IOException {
         String ct = ex.getRequestHeaders().getFirst("Content-Type");
         if (ct == null || !ct.toLowerCase().contains("application/json")) {
-            resp.error(ex, 405, "unsupported media type");
+            resp.error(ex, 415, "unsupported media type");
             return;
         }
 
@@ -207,10 +205,17 @@ public class RatingHandler {
         try {
             service.confirmComment(ratingId, userId);
             resp.empty(ex, 204);
-        } catch (IllegalArgumentException e) {
-            resp.error(ex, 404, e.getMessage());
         } catch (SecurityException se) {
-            resp.error(ex, 403, "forbidden");
+            resp.error(ex, 403, se.getMessage());
+        } catch (IllegalStateException e){
+            resp.error(ex, 409, e.getMessage());
+        } catch(IllegalArgumentException e){
+            String msg = e.getMessage();
+            if("rating not found".equalsIgnoreCase(msg)){
+                resp.error(ex, 404, msg);
+            } else{
+                resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
+            }
         }
     }
 
@@ -229,12 +234,18 @@ public class RatingHandler {
             resp.empty(ex, 204);
         } catch (SecurityException se) {
             resp.error(ex, 403, se.getMessage());
+        } catch (IllegalStateException e){
+            resp.error(ex, 409, e.getMessage());
         } catch (IllegalArgumentException e) {
             String msg = e.getMessage();
-            resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
+            if (msg != null && "rating not found".equalsIgnoreCase(msg)) {
+                resp.error(ex, 404, msg);
+            } else {
+                resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
+            }
         }
-
     }
+
 
     // DELETE ratings/{{ratingId}}/like
     public void unlike(HttpExchange ex, UUID ratingId) throws IOException {
@@ -249,15 +260,17 @@ public class RatingHandler {
         try {
             service.unlike(ratingId, userId);
             resp.empty(ex, 204);
+        }   catch (SecurityException se) {
+            resp.error(ex, 403, se.getMessage());
+        } catch (IllegalStateException e){
+            resp.error(ex, 409, e.getMessage());
         } catch (IllegalArgumentException e) {
             String msg = e.getMessage();
             if("rating not found".equalsIgnoreCase(msg)){
                 resp.error(ex, 404, msg);
-            }else {
+            } else {
                 resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
             }
-        } catch (SecurityException se) {
-            resp.error(ex, 403, se.getMessage());
         }
     }
 }

@@ -15,6 +15,8 @@ public class LeaderboardService {
     }
 
     public List<LeaderboardEntry> getLeaderboard(int limit, int offset) {
+        if (limit < 0) throw new IllegalArgumentException("limit < 0");
+        if (offset < 0) throw new IllegalArgumentException("offset < 0");
         return userRepo.leaderboardByRatings(limit, offset);
     }
 }

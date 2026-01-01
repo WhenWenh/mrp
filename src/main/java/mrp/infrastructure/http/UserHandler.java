@@ -59,6 +59,8 @@ public class UserHandler implements RouteHandler {
             UserCredentials creds = mapper.readValue(in, UserCredentials.class);
             User u = service.register(creds.username, creds.password);
             resp.json(ex, 201, new UserResponse(u.getId(), u.getUsername()));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            resp.error(ex, 400, "invalid json");
         } catch (IllegalArgumentException e) {
             resp.error(ex, 400, e.getMessage());
         } catch (IllegalStateException e) {
@@ -81,22 +83,35 @@ public class UserHandler implements RouteHandler {
     }
 
     private void me(HttpExchange ex) throws IOException {
+        UUID userId;
         try {
-            String authHeader = ex.getRequestHeaders().getFirst("Authorization");
-            UUID userId = auth.userIdFromAuthHeader(authHeader);
+            userId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
+
+        try {
             User u = service.getProfile(userId);
             resp.json(ex, 200, new UserResponse(u.getId(), u.getUsername()));
         } catch (IllegalArgumentException e) {
-            resp.error(ex, 401, e.getMessage());
+            // "user not found" -> 404, alles andere 400 (theoretisch)
+            String msg = e.getMessage();
+            if (msg != null && msg.toLowerCase().contains("not found")) {
+                resp.error(ex, 404, "not found");
+            } else {
+                resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
+            }
         }
     }
+
 
     private void profile(HttpExchange ex, UUID userId) throws IOException {
         UUID authUserId;
         try {
             authUserId = auth.requireUserId(ex);
         } catch (IllegalArgumentException e) {
-            resp.error(ex, 401, e.getMessage()); // z.B. "token expired"
+            resp.error(ex, 401, e.getMessage());
             return;
         }
 
@@ -111,10 +126,17 @@ public class UserHandler implements RouteHandler {
 
             UserProfileResponse dto = toProfileResponse(u, stats.totalRatings, stats.averageScore);
             resp.json(ex, 200, dto);
+
         } catch (IllegalArgumentException e) {
-            resp.error(ex, 404, e.getMessage());
+            String msg = e.getMessage();
+            if (msg != null && msg.toLowerCase().contains("not found")) {
+                resp.error(ex, 404, msg);
+            } else {
+                resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
+            }
         }
     }
+
 
     private void updateProfile(HttpExchange ex, UUID userId) throws IOException {
         UUID authUserId;
@@ -135,13 +157,17 @@ public class UserHandler implements RouteHandler {
             User u = service.updateProfile(userId, update.email, update.favoriteGenre);
 
             mrp.dto.UserRatingStats stats = service.getUserRatingStats(userId);
-
             UserProfileResponse dto = toProfileResponse(u, stats.totalRatings, stats.averageScore);
             resp.json(ex, 200, dto);
+
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            resp.error(ex, 400, "invalid json");
         } catch (IllegalArgumentException e) {
-            resp.error(ex, 400, e.getMessage());
+            String msg = e.getMessage();
+            resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
         }
     }
+
 
     private UserProfileResponse toProfileResponse(User u, int totalRatings, double averageScore) {
         UserProfileResponse dto = new UserProfileResponse();

@@ -1,113 +1,113 @@
-package mrp.application;
+    package mrp.application;
 
-import mrp.application.security.PasswordHasher;
-import mrp.domain.model.User;
-import mrp.domain.ports.AuthTokenService;
-import mrp.domain.ports.UserRepository;
-import mrp.dto.TokenResponse;
+    import mrp.application.security.PasswordHasher;
+    import mrp.domain.model.User;
+    import mrp.domain.ports.AuthTokenService;
+    import mrp.domain.ports.UserRepository;
+    import mrp.dto.TokenResponse;
 
-import mrp.domain.model.Rating;
-import mrp.domain.ports.RatingRepository;
-import mrp.dto.UserRatingStats;
+    import mrp.domain.model.Rating;
+    import mrp.domain.ports.RatingRepository;
+    import mrp.dto.UserRatingStats;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+    import java.util.List;
+    import java.util.Optional;
+    import java.util.UUID;
 
-/**
- * Application-Use-Cases für User (Register, Login, Profile).
- * Kennt NUR Ports (UserRepository, AuthTokenService) – keine Infrastruktur.
- */
-public class UserService {
-
-    private UserRepository users;
-    private AuthTokenService tokens;
-    private RatingRepository ratings;
-
-    public UserService(UserRepository users, AuthTokenService tokens, RatingRepository ratings) {
-        if (users == null) throw new IllegalArgumentException("users null");
-        if (tokens == null) throw new IllegalArgumentException("tokens null");
-        if (ratings == null) throw new IllegalArgumentException("ratings null");
-        this.users = users;
-        this.tokens = tokens;
-        this.ratings = ratings;
-    }
-
-    /*
-     * Registriert einen neuen Nutzer.
-     * @throws IllegalStateException wenn Username bereits existiert
-     * @throws IllegalArgumentException bei ungültigen Eingaben
+    /**
+     * Application-Use-Cases für User (Register, Login, Profile).
+     * Kennt NUR Ports (UserRepository, AuthTokenService) – keine Infrastruktur.
      */
+    public class UserService {
 
-    public UserRatingStats getUserRatingStats(UUID userId) {
-        List<Rating> ratingList = ratings.listByUser(userId);
+        private UserRepository users;
+        private AuthTokenService tokens;
+        private RatingRepository ratings;
 
-        int total = ratingList.size();
-        if (total == 0) {
-            return new UserRatingStats(0, 0.0);
+        public UserService(UserRepository users, AuthTokenService tokens, RatingRepository ratings) {
+            if (users == null) throw new IllegalArgumentException("users null");
+            if (tokens == null) throw new IllegalArgumentException("tokens null");
+            if (ratings == null) throw new IllegalArgumentException("ratings null");
+            this.users = users;
+            this.tokens = tokens;
+            this.ratings = ratings;
         }
 
-        int sum = 0;
-        for (Rating r : ratingList) {
-            sum += r.getStars();
+        /*
+         * Registriert einen neuen Nutzer.
+         * @throws IllegalStateException wenn Username bereits existiert
+         * @throws IllegalArgumentException bei ungültigen Eingaben
+         */
+
+        public UserRatingStats getUserRatingStats(UUID userId) {
+            List<Rating> ratingList = ratings.listByUser(userId);
+
+            int total = ratingList.size();
+            if (total == 0) {
+                return new UserRatingStats(0, 0.0);
+            }
+
+            int sum = 0;
+            for (Rating r : ratingList) {
+                sum += r.getStars();
+            }
+
+            double avg = (double) sum / (double) total;
+            return new UserRatingStats(total, avg);
         }
 
-        double avg = (double) sum / (double) total;
-        return new UserRatingStats(total, avg);
-    }
+        public User register(String username, String rawPassword) {
+            validateCredentials(username, rawPassword);
 
-    public User register(String username, String rawPassword) {
-        validateCredentials(username, rawPassword);
+            Optional<User> existing = users.findByUsername(username);
+            if (existing.isPresent()) {
+                throw new IllegalStateException("username already exists");
+            }
 
-        Optional<User> existing = users.findByUsername(username);
-        if (existing.isPresent()) {
-            throw new IllegalStateException("username already exists");
+            String hash = PasswordHasher.sha256(rawPassword);
+            return users.create(username, hash);
         }
 
-        String hash = PasswordHasher.sha256(rawPassword);
-        return users.create(username, hash);
-    }
-
-    /*
-     * Login mit Username/Password – liefert ein Bearer-Token.
-     * @throws IllegalArgumentException bei ungültigen Credentials
-     */
+        /*
+         * Login mit Username/Password – liefert ein Bearer-Token.
+         * @throws IllegalArgumentException bei ungültigen Credentials
+         */
 
 
 
-    public String login(String username, String rawPassword) {
-        validateCredentials(username, rawPassword);
+        public String login(String username, String rawPassword) {
+            validateCredentials(username, rawPassword);
 
-        Optional<User> userOpt = users.findByUsername(username);
-        if (userOpt.isEmpty()) {
-            throw new SecurityException("invalid username or password");
+            Optional<User> userOpt = users.findByUsername(username);
+            if (userOpt.isEmpty()) {
+                throw new SecurityException("invalid username or password");
+            }
+
+            User u = userOpt.get();
+            String hash = PasswordHasher.sha256(rawPassword);
+            if (!hash.equals(u.getPasswordHash())) {
+                throw new SecurityException("invalid username or password");
+            }
+
+            return tokens.issueToken(u.getId(), u.getUsername());
         }
 
-        User u = userOpt.get();
-        String hash = PasswordHasher.sha256(rawPassword);
-        if (!hash.equals(u.getPasswordHash())) {
-            throw new SecurityException("invalid username or password");
+        public User getProfile(UUID userId) {
+            if (userId == null) throw new IllegalArgumentException("userId null");
+            return users.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("user not found"));
         }
 
-        return tokens.issueToken(u.getId(), u.getUsername());
-    }
+        public User updateProfile(UUID userId, String email, String favoriteGenre) {
+            if (userId == null) throw new IllegalArgumentException("userId null");
+            users.updateProfile(userId, email, favoriteGenre);
+            return getProfile(userId);
+        }
 
-    public User getProfile(UUID userId) {
-        if (userId == null) throw new IllegalArgumentException("userId null");
-        return users.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("user not found"));
+        private void validateCredentials(String username, String rawPassword) {
+            if (username == null || username.isBlank())
+                throw new IllegalArgumentException("username blank");
+            if (rawPassword == null || rawPassword.isBlank())
+                throw new IllegalArgumentException("password blank");
+        }
     }
-
-    public User updateProfile(UUID userId, String email, String favoriteGenre) {
-        if (userId == null) throw new IllegalArgumentException("userId null");
-        users.updateProfile(userId, email, favoriteGenre);
-        return getProfile(userId);
-    }
-
-    private void validateCredentials(String username, String rawPassword) {
-        if (username == null || username.isBlank())
-            throw new IllegalArgumentException("username blank");
-        if (rawPassword == null || rawPassword.isBlank())
-            throw new IllegalArgumentException("password blank");
-    }
-}

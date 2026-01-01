@@ -40,6 +40,11 @@ public class LeaderboardHandler {
         int limit = parseIntQuery(ex, "limit", 10);
         int offset = parseIntQuery(ex, "offset", 0);
 
+        if (limit <= 0 || offset < 0) {
+            resp.error(ex, 400, "invalid pagination");
+            return;
+        }
+
         try {
             List<LeaderboardEntry> entries = service.getLeaderboard(limit, offset);
             List<LeaderboardEntryResponse> responseList = new ArrayList<>();
@@ -59,11 +64,7 @@ public class LeaderboardHandler {
 
         } catch (IllegalArgumentException e) {
             String msg = e.getMessage();
-            resp.error(
-                    ex,
-                    400,
-                    (msg == null || msg.isBlank()) ? "bad request" : msg
-            );
+            resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
         }
     }
 

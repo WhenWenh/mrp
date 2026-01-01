@@ -35,7 +35,7 @@ public class MediaHandler {
     public void create(HttpExchange ex) throws IOException {
         String ct = ex.getRequestHeaders().getFirst("Content-Type");
         if (ct == null || !ct.toLowerCase().contains("application/json")) {
-            resp.error(ex, 405, "unsupported media type");
+            resp.error(ex, 415, "unsupported media type");
             return;
         }
 
@@ -60,8 +60,6 @@ public class MediaHandler {
             resp.error(ex, 400, "invalid json");
         } catch (IllegalArgumentException e) {
             resp.error(ex, 400, e.getMessage());
-        } catch (SecurityException se) {
-            resp.error(ex, 403, "forbidden");
         }
     }
 
@@ -77,7 +75,12 @@ public class MediaHandler {
             Object one = service.get(id);
             resp.json(ex, 200, one);
         } catch (IllegalArgumentException e) {
-            resp.error(ex, 404, e.getMessage());
+            String msg = e.getMessage();
+            if (msg != null && "media not found".equalsIgnoreCase(msg)) {
+                resp.error(ex, 404, "not found");
+            } else {
+                resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
+            }
         }
     }
 
@@ -103,7 +106,7 @@ public class MediaHandler {
             resp.json(ex, 200, updated);
         }catch (InvalidFormatException e) {
             // z.B. falsches Enum / falscher Typ im JSON
-            resp.error(ex, 400, "invalid value");
+            resp.error(ex, 400, "invalid value for field: " + e.getPathReference());
 
         } catch (JsonProcessingException e) {
             // kaputtes JSON
@@ -161,8 +164,13 @@ public class MediaHandler {
                 q.sOr("sortBy","created"), q.sOr("sortDir","desc"),
                 q.iOr("limit",20), q.iOr("offset",0)
         );
-        Object list = service.search(search);
-        resp.json(ex, 200, list);
+        try {
+            Object list = service.search(search);
+            resp.json(ex, 200, list);
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            resp.error(ex, 400, (msg == null || msg.isBlank()) ? "bad request" : msg);
+        }
     }
 
     // Mini Query-Helper (optional)

@@ -15,8 +15,8 @@ import java.util.UUID;
 
 public class RatingService {
 
-    private final RatingRepository ratings;
-    private final MediaRepository mediaRepo;
+    private RatingRepository ratings;
+    private MediaRepository mediaRepo;
 
     public RatingService(RatingRepository ratings, MediaRepository mediaRepo) {
         if (ratings == null) throw new IllegalArgumentException("ratings null");
@@ -181,11 +181,25 @@ public class RatingService {
         if (ratingId == null) throw new IllegalArgumentException("ratingId null");
         if (actorUserId == null) throw new IllegalArgumentException("actorUserId null");
 
+        Rating existing = ratings.findById(ratingId)
+                .orElseThrow(() -> new IllegalArgumentException("rating not found"));
+
+        if (!existing.getUserId().equals(actorUserId)) {
+            throw new SecurityException("forbidden: not the author of rating");
+        }
+
+        String comment = existing.getComment();
+        if (comment == null || comment.isBlank()) {
+            throw new IllegalArgumentException("no comment");
+        }
+
         boolean ok = ratings.confirmComment(ratingId, actorUserId);
         if (!ok) {
-            throw new IllegalArgumentException("not found or forbidden or no comment");
+            // sollte nach den Checks nicht passieren
+            throw new IllegalStateException("confirm failed");
         }
     }
+
 
     public void like(UUID ratingId, UUID actorUserId) {
         if (ratingId == null) throw new IllegalArgumentException("ratingId null");
@@ -197,23 +211,26 @@ public class RatingService {
         }
 
         boolean ok = ratings.addLike(ratingId, actorUserId);
-        if (!ok) {
-            throw new IllegalArgumentException("already liked");
-        }
+
+        if (!ok) throw new IllegalStateException("already liked");
+
     }
 
     public void unlike(UUID ratingId, UUID actorUserId) {
-        if (ratingId == null) throw new IllegalArgumentException("id null");
-        if (actorUserId == null) throw new IllegalArgumentException("userId null");
+        if (ratingId == null) throw new IllegalArgumentException("ratingId null");
+        if (actorUserId == null) throw new IllegalArgumentException("actorUserId null");
 
-        Rating r = ratings.findById(ratingId).orElseThrow(() -> new IllegalArgumentException("rating not found"));
-        if(r.getUserId().equals(actorUserId)) {
-            throw new SecurityException("forbidden: cannot like won rating to begin with");
+        Rating r = ratings.findById(ratingId)
+                .orElseThrow(() -> new IllegalArgumentException("rating not found"));
+
+        if (r.getUserId().equals(actorUserId)) {
+            throw new SecurityException("forbidden: cannot unlike own rating");
         }
 
         boolean ok = ratings.removeLike(ratingId, actorUserId);
-        if (!ok) throw new IllegalArgumentException("not liked");
+        if (!ok) throw new IllegalStateException("not liked");
     }
+
 
     /**
      * Baut die Response auf Basis Sichtbarkeit des Kommentars.

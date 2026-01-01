@@ -36,7 +36,7 @@ public class FavoriteService {
 
         media.findById(mediaId).orElseThrow(() -> new IllegalArgumentException("media not found"));
 
-        favorites.remove(userId, mediaId); // wenn nicht da: OK (idempotent)
+        favorites.remove(userId, mediaId);
     }
 
     public List<MediaResponse> listMine(UUID userId) {
