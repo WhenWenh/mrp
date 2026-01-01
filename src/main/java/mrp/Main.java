@@ -42,8 +42,6 @@ public class Main {
 
         //TODO: Router eventuel verschieben
         //TODO: Singelton desgin pattern überprüfen
-        //TODO: Fehlermeldungen auf json umbauen
-        //TODO: Abgelaufene Token prüfen und löschen in der DB (eventuell in der Login Funktion vor Login Logik abrufen
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
