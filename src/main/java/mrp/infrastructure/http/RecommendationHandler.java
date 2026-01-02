@@ -25,6 +25,26 @@ public class RecommendationHandler {
         this.resp = new HttpResponses(mapper);
     }
 
+    // SPEC: GET /users/{userId}/recommendations?limit=10
+    // Security: only allow the authenticated user to access their own recommendations
+    public void listForUser(HttpExchange ex, UUID userId) throws IOException {
+        UUID authUserId;
+        try {
+            authUserId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
+
+        if (!authUserId.equals(userId)) {
+            resp.error(ex, 403, "forbidden");
+            return;
+        }
+
+        // Delegate to existing implementation
+        listMine(ex);
+    }
+
     // GET /users/me/recommendations?limit=10
     public void listMine(HttpExchange ex) throws IOException {
         UUID userId;
@@ -62,5 +82,4 @@ public class RecommendationHandler {
             );
         }
     }
-
 }

@@ -91,16 +91,8 @@ public class Main {
         router.add("DELETE", "^/media/([0-9a-fA-F-]{36})$", (ex, m) -> {
             UUID id = UUID.fromString(m.group(1)); mediaHandler.delete(ex, id);
         });
-
-        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
-        server.createContext("/api", router::handle);
-        server.setExecutor(null);
-        server.start();
-        System.out.println("MRP HTTP Server läuft auf http://localhost:" + port + "/api");
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> { server.stop(0); }));
-
         // Ratings
-        router.add("POST", "^/media/([0-9a-fA-F-]{36})/ratings$", (ex, m) -> {
+        router.add("POST", "^/media/([0-9a-fA-F-]{36})/rate$", (ex, m) -> {
             UUID mediaId = UUID.fromString(m.group(1));
             ratingHandler.rateMedia(ex, mediaId);
         });
@@ -108,9 +100,16 @@ public class Main {
             UUID mediaId = UUID.fromString(m.group(1));
             ratingHandler.listForMedia(ex, mediaId);
         });
+        //SPEC Ansatz
+        router.add("GET", "^/users/([0-9a-fA-F-]{36})/ratings$", (ex, m) -> {
+            UUID userId = UUID.fromString(m.group(1));
+            ratingHandler.listForUser(ex, userId);
+        });
+        //Mein Ansatz
         router.add("GET", "^/users/me/ratings$", (ex, m) -> {
             ratingHandler.listMine(ex);
         });
+
         router.add("PUT", "^/ratings/([0-9a-fA-F-]{36})$", (ex, m) -> {
             UUID ratingId = UUID.fromString(m.group(1));
             ratingHandler.update(ex, ratingId);
@@ -119,7 +118,7 @@ public class Main {
             UUID ratingId = UUID.fromString(m.group(1));
             ratingHandler.delete(ex, ratingId);
         });
-        router.add("POST", "^/ratings/([0-9a-fA-F-]{36})/confirm-comment$", (ex, m) -> {
+        router.add("POST", "^/ratings/([0-9a-fA-F-]{36})/confirm$", (ex, m) -> {
             UUID id = UUID.fromString(m.group(1));
             ratingHandler.confirmComment(ex, id);
         });
@@ -141,11 +140,23 @@ public class Main {
             UUID mediaId = UUID.fromString(m.group(1));
             favoriteHandler.remove(ex, mediaId);
         });
+
+        //SPEC Ansatz
+        router.add("GET", "^/users/([0-9a-fA-F-]{36})/favorites$", (ex, m) -> {
+            UUID userId = UUID.fromString(m.group(1));
+            favoriteHandler.listForUser(ex, userId);
+        });
+        //Mein Ansatz
         router.add("GET", "^/users/me/favorites$", (ex, m) -> {
             favoriteHandler.listMine(ex);
         });
 
         //Recommendation
+        router.add("GET", "^/users/([0-9a-fA-F-]{36})/recommendations$", (ex, m) -> {
+            UUID userId = UUID.fromString(m.group(1));
+            recommendationHandler.listForUser(ex, userId);
+        });
+
         router.add("GET", "^/users/me/recommendations$", (ex, m) -> {
             recommendationHandler.listMine(ex);
         });
@@ -154,6 +165,14 @@ public class Main {
         router.add("GET", "^/leaderboard$", (ex, m) -> {
             leaderboardHandler.list(ex);
         });
+
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+        server.createContext("/api", router::handle);
+        server.setExecutor(null);
+        server.start();
+        System.out.println("MRP HTTP Server läuft auf http://localhost:" + port + "/api");
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> { server.stop(0); }));
 
     }
 }

@@ -85,14 +85,31 @@ public class FavoriteHandler {
         try {
             resp.json(ex, 200, service.listMine(userId));
         } catch (IllegalArgumentException e) {
-            resp.error(
-                    ex,
-                    400,
-                    e.getMessage() == null || e.getMessage().isBlank()
-                            ? "bad request"
-                            : e.getMessage()
-            );
+            resp.error(ex, 400, e.getMessage() == null || e.getMessage().isBlank() ? "bad request" : e.getMessage());
         }
     }
+
+    // SPEC: GET /users/{userId}/favorites
+    public void listForUser(HttpExchange ex, UUID userId) throws IOException {
+        UUID authUserId;
+        try {
+            authUserId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
+
+        if (!authUserId.equals(userId)) {
+            resp.error(ex, 403, "forbidden");
+            return;
+        }
+
+        try {
+            resp.json(ex, 200, service.listMine(userId));
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 400, e.getMessage() == null || e.getMessage().isBlank() ? "bad request" : e.getMessage());
+        }
+    }
+
 
 }

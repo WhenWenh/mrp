@@ -123,6 +123,28 @@ public class RatingHandler {
             resp.error(ex, 400, e.getMessage());
         }
     }
+    // GET /users/{userId}}/ratings -> nach SPEC
+    public void listForUser(HttpExchange ex, UUID userId) throws IOException {
+        UUID authUserId;
+        try {
+            authUserId = auth.requireUserId(ex);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 401, e.getMessage());
+            return;
+        }
+
+        if (!authUserId.equals(userId)) {
+            resp.error(ex, 403, "forbidden");
+            return;
+        }
+
+        try {
+            Object list = service.listForUser(userId);
+            resp.json(ex, 200, list);
+        } catch (IllegalArgumentException e) {
+            resp.error(ex, 400, e.getMessage());
+        }
+    }
 
     // PUT /ratings/{ratingId}
     public void update(HttpExchange ex, UUID ratingId) throws IOException {

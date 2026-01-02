@@ -88,7 +88,6 @@ public class RatingService {
      */
     public List<RatingResponse> listForUser(UUID userId) {
         if (userId == null) throw new IllegalArgumentException("userId null");
-
         List<Rating> list = ratings.listByUser(userId);
         List<RatingResponse> out = new ArrayList<>();
         for (Rating r : list) {
