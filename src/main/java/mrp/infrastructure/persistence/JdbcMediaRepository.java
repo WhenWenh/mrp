@@ -100,39 +100,59 @@ public class JdbcMediaRepository implements MediaRepository {
         List<Object> params = new ArrayList<>();
 
         if (s != null) {
-            if (s.getQuery() != null && !s.getQuery().trim().isEmpty()) {
+            // title (partial)
+            if (s.getTitle() != null && !s.getTitle().trim().isEmpty()) {
                 sb.append(" AND title ILIKE ?");
-                params.add("%" + s.getQuery().trim() + "%");
+                params.add("%" + s.getTitle().trim() + "%");
             }
+
+            // mediaType (exact)
             if (s.getMediaType() != null && !s.getMediaType().trim().isEmpty()) {
                 sb.append(" AND media_type = ?");
                 params.add(s.getMediaType().trim());
             }
-            if (s.getYearFrom() != null) {
-                sb.append(" AND release_year >= ?");
-                params.add(s.getYearFrom());
+
+            // releaseYear (exact)
+            if (s.getReleaseYear() != null) {
+                sb.append(" AND release_year = ?");
+                params.add(s.getReleaseYear());
             }
-            if (s.getYearTo() != null) {
-                sb.append(" AND release_year <= ?");
-                params.add(s.getYearTo());
-            }
-            if (s.getAgeMax() != null) {
+
+            // ageRestriction (treat as max allowed)
+            if (s.getAgeRestriction() != null) {
                 sb.append(" AND (age_restriction IS NULL OR age_restriction <= ?)");
-                params.add(s.getAgeMax());
+                params.add(s.getAgeRestriction());
             }
+
+            // genre (must be contained in genres array)
             if (s.getGenre() != null && !s.getGenre().trim().isEmpty()) {
                 sb.append(" AND ? = ANY(genres)");
                 params.add(s.getGenre().trim());
             }
+
+            // rating (treat as minimum average score)
+            if (s.getRating() != null) {
+                sb.append(" AND COALESCE(average_score, 0) >= ?");
+                params.add(s.getRating());
+            }
         }
 
-        String sortCol = "created_at";
-        if (s != null && s.getSortBy() != null) {
-            String sbBy = s.getSortBy().toLowerCase();
+        // sortBy: title | year | score
+        String sortCol = "title";
+        if (s != null && s.getSortBy() != null && !s.getSortBy().trim().isEmpty()) {
+            String sbBy = s.getSortBy().trim().toLowerCase();
             if ("title".equals(sbBy)) sortCol = "title";
             else if ("year".equals(sbBy)) sortCol = "release_year";
+            else if ("score".equals(sbBy)) {
+                // TODO: falls deine Spalte nicht average_score heißt, hier anpassen:
+                sortCol = "average_score";
+            }
         }
+
+        // sortDir
         String dir = (s != null && "asc".equalsIgnoreCase(s.getSortDir())) ? "ASC" : "DESC";
+
+        // limit/offset
         int limit = (s != null ? s.getLimit() : 20);
         int offset = (s != null ? s.getOffset() : 0);
         if (limit <= 0) limit = 20;
@@ -146,20 +166,26 @@ public class JdbcMediaRepository implements MediaRepository {
 
         try (Connection c = ConnectionFactory.get();
              PreparedStatement ps = c.prepareStatement(sb.toString())) {
+
             int i = 1;
             for (Object p : params) {
+                // Integer und Double sauber setzen
                 if (p instanceof Integer) ps.setInt(i++, (Integer) p);
+                else if (p instanceof Double) ps.setDouble(i++, (Double) p);
                 else ps.setObject(i++, p);
             }
+
             List<MediaEntry> out = new ArrayList<>();
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) out.add(map(rs));
             }
             return out;
+
         } catch (SQLException ex) {
             throw new RuntimeException("search failed", ex);
         }
     }
+
 
     @Override
     public boolean isOwner(UUID mediaId, UUID userId) {

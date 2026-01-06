@@ -160,10 +160,18 @@ public class MediaHandler {
 
         var q = Query.from(ex.getRequestURI());
         var search = new mrp.domain.ports.MediaSearch(
-                q.s("q"), q.s("type"), q.s("genre"),q.i("yearFrom"), q.i("yearTo"), q.i("ageMax"),
-                q.sOr("sortBy","created"), q.sOr("sortDir","desc"),
-                q.iOr("limit",20), q.iOr("offset",0)
+                q.s("title"),
+                q.s("mediaType"),
+                q.s("genre"),
+                q.i("releaseYear"),
+                q.i("ageRestriction"),
+                q.d("rating"),
+                q.sOr("sortBy","title"),
+                q.sOr("sortDir","asc"),
+                q.iOr("limit",20),
+                q.iOr("offset",0)
         );
+
         try {
             Object list = service.search(search);
             resp.json(ex, 200, list);
@@ -189,5 +197,11 @@ public class MediaHandler {
         String sOr(String k,String d){ String v=m.get(k); return v==null||v.isBlank()?d:v; }
         Integer i(String k){ try { return m.get(k)==null?null:Integer.parseInt(m.get(k)); } catch(Exception e){ return null; } }
         Integer iOr(String k,int d){ Integer v=i(k); return v==null?d:v; }
+        Double d(String k){
+            try { return m.get(k)==null?null:Double.parseDouble(m.get(k)); }
+            catch(Exception e){ return null; }
+        }
     }
+
+
 }

@@ -1,37 +1,47 @@
 package mrp.domain.ports;
 
 public class MediaSearch {
-    private String query;
+    private String title;
     private String mediaType;
     private String genre;
-    private Integer yearFrom;
-    private Integer yearTo;
-    private Integer ageMax;
-    private String sortBy;  // "title" | "year" | "created"
-    private String sortDir; // "asc" | "desc"
+    private Integer releaseYear;
+    private Integer ageRestriction;
+    private Double rating;
+    private String sortBy;
+    private String sortDir;
     private int limit;
     private int offset;
 
-    public MediaSearch(String query, String mediaType, String genre, Integer yearFrom, Integer yearTo, Integer ageMax,
-                       String sortBy, String sortDir, int limit, int offset) {
-        this.query = query;
+    public MediaSearch(
+            String title,
+            String mediaType,
+            String genre,
+            Integer releaseYear,
+            Integer ageRestriction,
+            Double rating,
+            String sortBy,
+            String sortDir,
+            int limit,
+            int offset
+    ) {
+        this.title = title;
         this.mediaType = mediaType;
         this.genre = genre;
-        this.yearFrom = yearFrom;
-        this.yearTo = yearTo;
-        this.ageMax = ageMax;
+        this.releaseYear = releaseYear;
+        this.ageRestriction = ageRestriction;
+        this.rating = rating;
         this.sortBy = sortBy;
         this.sortDir = sortDir;
         this.limit = limit;
         this.offset = offset;
     }
 
-    public String getGenre(){return genre;}
-    public String getQuery() { return query; }
+    public String getTitle() { return title; }
     public String getMediaType() { return mediaType; }
-    public Integer getYearFrom() { return yearFrom; }
-    public Integer getYearTo() { return yearTo; }
-    public Integer getAgeMax() { return ageMax; }
+    public String getGenre() { return genre; }
+    public Integer getReleaseYear() { return releaseYear; }
+    public Integer getAgeRestriction() { return ageRestriction; }
+    public Double getRating() { return rating; }
     public String getSortBy() { return sortBy; }
     public String getSortDir() { return sortDir; }
     public int getLimit() { return limit; }

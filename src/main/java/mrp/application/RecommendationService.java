@@ -30,9 +30,11 @@ public class RecommendationService {
 
     /**
      * Recommendations basierend auf:
-     * - Rating-History (Stars gewichten Präferenzen)
+     * - Rating-History (NUR "highly rated": >= 4 Sterne zählen als Präferenzsignal)
      * - Similarity: Genre-Overlap + MediaType Match (+ kleiner avg-score Bonus)
-     * - Ausschließen: bereits bewertete Medien
+     * - Ausschließen: bereits bewertete Medien (ALLE Bewertungen, auch 1 Stern)
+     *
+     * Wenn keine >=4 Sterne Ratings vorhanden sind => 200 + []
      */
     public List<MediaResponse> recommendForUser(UUID userId, int limit) {
         if (userId == null) throw new IllegalArgumentException("userId null");
@@ -44,23 +46,33 @@ public class RecommendationService {
             return List.of();
         }
 
-        // 1) ratedMediaIds: zum Ausschließen
+        // Option A (streng): nur "highly rated" (>=4) zählen als Präferenzsignal
+        List<Rating> positive = new ArrayList<>();
+        for (Rating r : history) {
+            if (r == null) continue;
+            if (r.getStars() >= 4) positive.add(r);
+        }
+        if (positive.isEmpty()) {
+            return List.of(); // 200 + []
+        }
+
+        // 1) ratedMediaIds: zum Ausschließen (ALLE Bewertungen)
         Set<UUID> ratedMediaIds = new HashSet<>();
         for (Rating r : history) {
             if (r != null && r.getMediaId() != null) ratedMediaIds.add(r.getMediaId());
         }
 
-        // 2) Präferenzen (Genre + Type) aus Rating-History, gewichtet nach Stars
+        // 2) Präferenzen (Genre + Type) aus POSITIVER Rating-History, gewichtet nach Stars
         Map<String, Integer> genreWeights = new HashMap<>();
         Map<MediaType, Integer> typeWeights = new HashMap<>();
 
-        for (Rating r : history) {
+        for (Rating r : positive) {
             if (r == null || r.getMediaId() == null) continue;
 
             MediaEntry rated = media.findById(r.getMediaId()).orElse(null);
             if (rated == null) continue;
 
-            int w = r.getStars(); // 1..5
+            int w = r.getStars(); // 4..5
 
             List<String> genres = rated.getGenres();
             if (genres != null) {
@@ -84,25 +96,27 @@ public class RecommendationService {
 
         MediaType preferredType = mostWeightedType(typeWeights);
         String preferredTypeStr = preferredType != null ? preferredType.name() : null;
-        Integer preferredAge = preferredAgeMax(history);
 
-        // 3) Kandidaten NICHT "alle Medien": hol gezielt pro Top-Genre aus der History
+        // Age-Präferenz ebenfalls nur aus POSITIVEN Ratings ableiten
+        Integer preferredAge = preferredAgeMax(positive);
+
+        // 3) Kandidaten: hol gezielt pro Top-Genre aus der History
         List<String> topGenres = topKeysByWeight(genreWeights, 3);
 
         Map<UUID, MediaEntry> candidatesById = new HashMap<>();
 
         for (String g : topGenres) {
             MediaSearch search = new MediaSearch(
-                    null,               // query
-                    preferredTypeStr,    // mediaType (String)
+                    null,               // title
+                    preferredTypeStr,    // mediaType
                     g,                  // genre
-                    null,          // yearFrom
-                    null,               //yearTo
-                    preferredAge,       // ageMax
-                    "averageScore",      // sortBy
+                    null,               // releaseYear
+                    preferredAge,       // ageRestriction (als max-Filter)
+                    null,               // rating (min avg-score) - nicht genutzt
+                    "score",            // sortBy
                     "desc",             // sortDir
-                    50,                 // limit
-                    0                   // offset
+                    50,
+                    0
             );
 
             List<MediaEntry> found = media.search(search);
@@ -110,7 +124,7 @@ public class RecommendationService {
 
             for (MediaEntry e : found) {
                 if (e == null || e.getId() == null) continue;
-                if (ratedMediaIds.contains(e.getId())) continue; // exclude already rated
+                if (ratedMediaIds.contains(e.getId())) continue; // exclude already rated (ALL)
                 candidatesById.putIfAbsent(e.getId(), e);
             }
         }
@@ -214,6 +228,14 @@ public class RecommendationService {
             if (best == null || age < best) {
                 best = age;
             }
+
+            // realistisch: größte bisher positiv bewertete Altersfreigabe
+            /*
+            if (best == null || age > best) {
+                best = age;
+            }
+            */
+
         }
 
         return best;
