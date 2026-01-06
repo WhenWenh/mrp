@@ -1,0 +1,94 @@
+package mrp.application;
+
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.mockito.Mockito;
+
+import mrp.application.security.PasswordHasher;
+import mrp.domain.model.Rating;
+import mrp.domain.model.User;
+import mrp.domain.ports.AuthTokenService;
+import mrp.domain.ports.RatingRepository;
+import mrp.domain.ports.UserRepository;
+import mrp.dto.UserRatingStats;
+
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+
+class UserServiceTest {
+    private UserRepository users;
+    private AuthTokenService tokens;
+    private RatingRepository ratings;
+    private PasswordHasher passwordHasher;
+
+    private UserService service;
+
+    @BeforeEach
+    void setUp() {
+        users = Mockito.mock(UserRepository.class);
+        tokens = Mockito.mock(AuthTokenService.class);
+        ratings = Mockito.mock(RatingRepository.class);
+        passwordHasher = Mockito.mock(PasswordHasher.class);
+        service = new UserService(users, tokens, ratings, passwordHasher);
+    }
+
+    @Test
+    void login_success_returnsToken() {
+        String username = "alice";
+        String rawPassword = "secret";
+        String token = "alice-mrpToken";
+
+        UUID userId = UUID.randomUUID();
+        User user = Mockito.mock(User.class);
+
+        Mockito.when(user.getId()).thenReturn(userId);
+        Mockito.when(user.getUsername()).thenReturn(username);
+        Mockito.when(user.getPasswordHash()).thenReturn("hash");
+
+        Mockito.when(users.findByUsername(username)).thenReturn(Optional.of(user));
+
+        Mockito.when(passwordHasher.matches(rawPassword, "hash")).thenReturn(true);
+
+        Mockito.when(tokens.issueToken(userId, username)).thenReturn(token);
+
+        String result = service.login(username, rawPassword);
+
+        assertEquals(token, result);
+        Mockito.verify(tokens).issueToken(userId, username);
+    }
+
+
+    // Test for stats functionality
+    @Test
+    void getUserRatingStats_noRatings_returnsZeroAndZeroAvg() {
+        UUID userId = UUID.randomUUID();
+        Mockito.when(ratings.listByUser(userId)).thenReturn(List.of());
+
+        UserRatingStats stats = service.getUserRatingStats(userId);
+
+        assertEquals(0, stats.totalRatings);
+        assertEquals(0.0, stats.averageScore, 0.000001);
+    }
+
+    @Test
+    void getUserRatingStats_withRatings_returnsTotalAndAvg(){
+        UUID userId = UUID.randomUUID();
+
+        Rating r1 = Mockito.mock(Rating.class);
+        Mockito.when(r1.getStars()).thenReturn(5);
+
+        Rating r2 = Mockito.mock(Rating.class);
+        Mockito.when(r2.getStars()).thenReturn(3);
+
+        Mockito.when(ratings.listByUser(userId)).thenReturn(List.of(r1, r2));
+
+        UserRatingStats stats = service.getUserRatingStats(userId);
+
+        assertEquals(2, stats.totalRatings);
+        assertEquals(4.0, stats.averageScore, 0.000001);
+    }
+}
