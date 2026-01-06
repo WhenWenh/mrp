@@ -14,6 +14,8 @@ import java.util.UUID;
 
 public class OpaqueTokenService implements AuthTokenService {
 
+
+    //TODO: Wenn ein neuer Token generiert wird, vorab überprüfen, wenn ein aktuelles existiert update es
     private static final SecureRandom RNG = new SecureRandom();
     private static final Duration TTL = Duration.ofHours(
             Long.parseLong(env("TOKEN_TTL_HOURS", "24"))

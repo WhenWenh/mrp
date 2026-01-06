@@ -1,32 +1,32 @@
 package mrp.application.security;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import org.mindrot.jbcrypt.BCrypt;
 
-/**
- * Einfache SHA-256 Hashing-Hilfe für Passwörter.
- * (Für die Zwischenabgabe ausreichend; später kann Argon2/BCrypt folgen.)
- */
 public class PasswordHasher {
 
-    public static String sha256(String raw) {
-        if (raw == null) throw new IllegalArgumentException("raw password null");
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] bytes = md.digest(raw.getBytes(StandardCharsets.UTF_8));
-            return toHex(bytes);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
+    private int cost;
+
+    public PasswordHasher(int cost) {
+        if (cost < 10 || cost > 14) {
+            throw new IllegalArgumentException("cost must be between 10 and 14");
         }
+        this.cost = cost;
     }
 
-    private static String toHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder(bytes.length * 2);
-        for (byte b: bytes) {
-            String hx = Integer.toHexString((b & 0xff) | 0x100).substring(1);
-            sb.append(hx);
+    public String hash(String rawPassword) {
+        if (rawPassword == null || rawPassword.isBlank()) {
+            throw new IllegalArgumentException("raw password null/blank");
         }
-        return sb.toString();
+        return BCrypt.hashpw(rawPassword, BCrypt.gensalt(cost));
+    }
+
+    public boolean matches(String rawPassword, String storedHash) {
+        if (rawPassword == null) {
+            throw new IllegalArgumentException("raw password null");
+        }
+        if (storedHash == null || storedHash.isBlank()) {
+            return false;
+        }
+        return BCrypt.checkpw(rawPassword, storedHash);
     }
 }

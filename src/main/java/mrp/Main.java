@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.sun.net.httpserver.HttpServer;
 
+import mrp.application.security.PasswordHasher;
+
 import mrp.application.MediaService;
 import mrp.application.UserService;
 import mrp.application.RatingService;
@@ -48,6 +50,7 @@ public class Main {
         mapper.configure(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         mapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
+
         UserRepository userRepo = new JdbcUserRepository();
         MediaRepository mediaRepo = new JdbcMediaRepository();
         RatingRepository ratingRepo = new JdbcRatingRepository();
@@ -56,7 +59,9 @@ public class Main {
         AuthTokenService tokenService = new OpaqueTokenService();
         AuthService authService = new AuthService(tokenService);
 
-        UserService userService = new UserService(userRepo, tokenService, ratingRepo);
+        PasswordHasher passwordHasher = new PasswordHasher(12); //Cost = 12
+
+        UserService userService = new UserService(userRepo, tokenService, ratingRepo, passwordHasher);
         MediaService mediaService = new MediaService(mediaRepo);
         RatingService ratingService = new RatingService(ratingRepo, mediaRepo);
         FavoriteService favoriteService = new FavoriteService(favoriteRepo, mediaRepo);

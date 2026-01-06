@@ -23,14 +23,16 @@
         private UserRepository users;
         private AuthTokenService tokens;
         private RatingRepository ratings;
+        private PasswordHasher passwordHasher;
 
-        public UserService(UserRepository users, AuthTokenService tokens, RatingRepository ratings) {
+        public UserService(UserRepository users, AuthTokenService tokens, RatingRepository ratings, PasswordHasher passwordHasher) {
             if (users == null) throw new IllegalArgumentException("users null");
             if (tokens == null) throw new IllegalArgumentException("tokens null");
             if (ratings == null) throw new IllegalArgumentException("ratings null");
             this.users = users;
             this.tokens = tokens;
             this.ratings = ratings;
+            this.passwordHasher = passwordHasher;
         }
 
         /*
@@ -64,7 +66,7 @@
                 throw new IllegalStateException("username already exists");
             }
 
-            String hash = PasswordHasher.sha256(rawPassword);
+            String hash = passwordHasher.hash(rawPassword);
             return users.create(username, hash);
         }
 
@@ -84,8 +86,7 @@
             }
 
             User u = userOpt.get();
-            String hash = PasswordHasher.sha256(rawPassword);
-            if (!hash.equals(u.getPasswordHash())) {
+            if (!passwordHasher.matches(rawPassword, u.getPasswordHash())) {
                 throw new SecurityException("invalid username or password");
             }
 

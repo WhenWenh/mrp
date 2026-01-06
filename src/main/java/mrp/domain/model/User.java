@@ -46,7 +46,10 @@ public class User {
         this.username = username.trim();
     }
 
-    public String getPasswordHash() { return passwordHash; }
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
     public void setPasswordHash(String passwordHash) {
         if (passwordHash == null || passwordHash.isBlank())
             throw new IllegalArgumentException("passwordHash blank");
