@@ -3,6 +3,7 @@ package mrp.application;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.mockito.Mockito;
 
 import mrp.application.security.PasswordHasher;
@@ -40,151 +41,163 @@ class UserServiceTest {
     /**
      * REGISTER
      */
-    @Test
-    void register_success() {
-        String username = "alice";
-        String rawPassword = "secret";
-        String hashedPassword = "hashed-secret";
 
-        User createdUser = Mockito.mock(User.class);
+    @Nested
+    class RegisterTests {
+        @Test
+        void register_success() {
+            String username = "alice";
+            String rawPassword = "secret";
+            String hashedPassword = "hashed-secret";
 
-        Mockito.when(users.findByUsername(username)).thenReturn(Optional.empty());
+            User createdUser = Mockito.mock(User.class);
 
-        Mockito.when(passwordHasher.hash(rawPassword)).thenReturn(hashedPassword);
+            Mockito.when(users.findByUsername(username)).thenReturn(Optional.empty());
 
-        Mockito.when(users.create(username, hashedPassword)).thenReturn(createdUser);
+            Mockito.when(passwordHasher.hash(rawPassword)).thenReturn(hashedPassword);
 
-        User result =  service.register(username, rawPassword);
+            Mockito.when(users.create(username, hashedPassword)).thenReturn(createdUser);
 
-        assertSame(createdUser, result);
+            User result = service.register(username, rawPassword);
 
-        Mockito.verify(passwordHasher).hash(rawPassword);
+            assertSame(createdUser, result);
 
-        Mockito.verify(users).create(username, hashedPassword);
+            Mockito.verify(passwordHasher).hash(rawPassword);
+
+            Mockito.verify(users).create(username, hashedPassword);
+        }
+
+        @Test
+        void register_usernameAlreadyTaken_throwsException() {
+            String username = "Wen";
+            String rawPassword = "secret";
+
+            User existingUser = Mockito.mock(User.class);
+
+            Mockito.when(users.findByUsername(username)).thenReturn(Optional.of(existingUser));
+
+            assertThrows(IllegalStateException.class, () ->
+                    service.register(username, rawPassword)
+            );
+
+            Mockito.verify(users, Mockito.never()).create(Mockito.anyString(), Mockito.anyString());
+            Mockito.verify(passwordHasher, Mockito.never()).hash(Mockito.anyString());
+        }
     }
-
-    @Test
-    void register_usernameAlreadyTaken_throwsException(){
-        String username = "Wen";
-        String rawPassword = "secret";
-
-        User existingUser = Mockito.mock(User.class);
-
-        Mockito.when(users.findByUsername(username)).thenReturn(Optional.of(existingUser));
-
-        assertThrows(IllegalStateException.class,() ->
-                service.register(username, rawPassword)
-        );
-
-        Mockito.verify(users,  Mockito.never()).create(Mockito.anyString(), Mockito.anyString());
-        Mockito.verify(passwordHasher,  Mockito.never()).hash(Mockito.anyString());
-    }
-
     /**
      * LOGIN
      */
 
-    @Test
-    void login_wrongPassword_throwsSecurityException() {
-        String username = "alice";
-        String rawPassword = "wrongPassword";
-        String storedHash = "correct-hash";
+    @Nested
+    class LoginTests {
+        @Test
+        void login_wrongPassword_throwsSecurityException() {
+            String username = "alice";
+            String rawPassword = "wrongPassword";
+            String storedHash = "correct-hash";
 
-        UUID userId = UUID.randomUUID();
-        User user = Mockito.mock(User.class);
+            UUID userId = UUID.randomUUID();
+            User user = Mockito.mock(User.class);
 
-        Mockito.when(user.getId()).thenReturn(userId);
-        Mockito.when(user.getUsername()).thenReturn(username);
-        Mockito.when(user.getPasswordHash()).thenReturn(storedHash);
+            Mockito.when(user.getId()).thenReturn(userId);
+            Mockito.when(user.getUsername()).thenReturn(username);
+            Mockito.when(user.getPasswordHash()).thenReturn(storedHash);
 
-        Mockito.when(users.findByUsername(username)).thenReturn(Optional.of(user));
-        Mockito.when(passwordHasher.matches(rawPassword, storedHash)).thenReturn(false);
+            Mockito.when(users.findByUsername(username)).thenReturn(Optional.of(user));
+            Mockito.when(passwordHasher.matches(rawPassword, storedHash)).thenReturn(false);
 
             assertThrows(SecurityException.class, () ->
                     service.login(username, rawPassword)
             );
+        }
+
+        @Test
+        void login_success_returnsToken() {
+            String username = "alice";
+            String rawPassword = "secret";
+            String token = "alice-mrpToken";
+
+            UUID userId = UUID.randomUUID();
+            User user = Mockito.mock(User.class);
+
+            Mockito.when(user.getId()).thenReturn(userId);
+            Mockito.when(user.getUsername()).thenReturn(username);
+            Mockito.when(user.getPasswordHash()).thenReturn("hash");
+
+            Mockito.when(users.findByUsername(username)).thenReturn(Optional.of(user));
+
+            Mockito.when(passwordHasher.matches(rawPassword, "hash")).thenReturn(true);
+
+            Mockito.when(tokens.issueToken(userId, username)).thenReturn(token);
+
+            String result = service.login(username, rawPassword);
+
+            assertEquals(token, result);
+            Mockito.verify(tokens).issueToken(userId, username);
+        }
+
+        @Test
+        void login_blankPassword_throws_IllegalArgumentException() {
+            String username = "alice";
+            String blankPassword = "";
+
+            assertThrows(IllegalArgumentException.class, () ->
+                    service.login(username, blankPassword)
+            );
+        }
     }
-
-    @Test
-    void login_success_returnsToken() {
-        String username = "alice";
-        String rawPassword = "secret";
-        String token = "alice-mrpToken";
-
-        UUID userId = UUID.randomUUID();
-        User user = Mockito.mock(User.class);
-
-        Mockito.when(user.getId()).thenReturn(userId);
-        Mockito.when(user.getUsername()).thenReturn(username);
-        Mockito.when(user.getPasswordHash()).thenReturn("hash");
-
-        Mockito.when(users.findByUsername(username)).thenReturn(Optional.of(user));
-
-        Mockito.when(passwordHasher.matches(rawPassword, "hash")).thenReturn(true);
-
-        Mockito.when(tokens.issueToken(userId, username)).thenReturn(token);
-
-        String result = service.login(username, rawPassword);
-
-        assertEquals(token, result);
-        Mockito.verify(tokens).issueToken(userId, username);
-    }
-
-    @Test
-    void login_blankPassword_throws_IllegalArgumentException(){
-        String username = "alice";
-        String blankPassword = "";
-
-        assertThrows(IllegalArgumentException.class, () ->
-                service.login(username, blankPassword)
-        );
-    }
-
     /**
      * USER STATS
      */
-    @Test
-    void getUserRatingStats_noRatings_returnsZeroAndZeroAvg() {
-        UUID userId = UUID.randomUUID();
-        Mockito.when(ratings.listByUser(userId)).thenReturn(List.of());
 
-        UserRatingStats stats = service.getUserRatingStats(userId);
+    @Nested
+    class UserStatsTests {
+        @Test
+        void getUserRatingStats_noRatings_returnsZeroAndZeroAvg() {
+            UUID userId = UUID.randomUUID();
+            Mockito.when(ratings.listByUser(userId)).thenReturn(List.of());
 
-        assertEquals(0, stats.totalRatings);
-        assertEquals(0.0, stats.averageScore, 0.000001);
-    }
+            UserRatingStats stats = service.getUserRatingStats(userId);
 
-    @Test
-    void getUserRatingStats_withRatings_returnsTotalAndAvg(){
-        UUID userId = UUID.randomUUID();
+            assertEquals(0, stats.totalRatings);
+            assertEquals(0.0, stats.averageScore, 0.000001);
+        }
 
-        Rating r1 = Mockito.mock(Rating.class);
-        Mockito.when(r1.getStars()).thenReturn(5);
+        @Test
+        void getUserRatingStats_withRatings_returnsTotalAndAvg() {
+            UUID userId = UUID.randomUUID();
 
-        Rating r2 = Mockito.mock(Rating.class);
-        Mockito.when(r2.getStars()).thenReturn(3);
+            Rating r1 = Mockito.mock(Rating.class);
+            Mockito.when(r1.getStars()).thenReturn(5);
 
-        Mockito.when(ratings.listByUser(userId)).thenReturn(List.of(r1, r2));
+            Rating r2 = Mockito.mock(Rating.class);
+            Mockito.when(r2.getStars()).thenReturn(3);
 
-        UserRatingStats stats = service.getUserRatingStats(userId);
+            Mockito.when(ratings.listByUser(userId)).thenReturn(List.of(r1, r2));
 
-        assertEquals(2, stats.totalRatings);
-        assertEquals(4.0, stats.averageScore, 0.000001);
+            UserRatingStats stats = service.getUserRatingStats(userId);
+
+            assertEquals(2, stats.totalRatings);
+            assertEquals(4.0, stats.averageScore, 0.000001);
+        }
     }
 
     /**
      * OTHER
      */
-    @Test
-    void getProfile_userNotFound_throwsIllegalArgumentException() {
+    @Nested
+    class OtherTests {
+        @Test
+        void getProfile_userNotFound_throwsIllegalArgumentException() {
 
-        UUID id = UUID.randomUUID();
+            UUID id = UUID.randomUUID();
 
-        IllegalArgumentException e =
-                assertThrows(IllegalArgumentException.class,
-                        () -> service.getProfile(id)
-                );
+            IllegalArgumentException e =
+                    assertThrows(IllegalArgumentException.class,
+                            () -> service.getProfile(id)
+                    );
 
-        assertEquals("user not found", e.getMessage());
+            assertEquals("user not found", e.getMessage());
+        }
     }
 }

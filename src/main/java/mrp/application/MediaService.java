@@ -48,21 +48,35 @@ public class MediaService {
     }
 
     public MediaResponse get(UUID id) {
-        if (id == null) throw new IllegalArgumentException("id null");
+        if (id == null) {
+            throw new IllegalArgumentException("id null");
+        }
+
         Optional<MediaEntry> opt = repo.findById(id);
-        if (opt.isEmpty()) throw new IllegalArgumentException("media not found");
+        if (opt.isEmpty()) {
+            throw new IllegalArgumentException("media not found");
+        }
+
         return toResponse(opt.get());
     }
 
     public MediaResponse update(UUID id, UUID requesterId, MediaRequest req) {
-        if (id == null) throw new IllegalArgumentException("id null");
-        if (requesterId == null) throw new IllegalArgumentException("requesterId null");
+        if (id == null) {
+            throw new IllegalArgumentException("id null");
+        }
+        if (requesterId == null) {
+            throw new IllegalArgumentException("requesterId null");
+        }
         validateRequest(req);
 
 
-        MediaEntry current = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("media not found"));
+        MediaEntry current = repo.findById(id).orElseThrow(() ->
+                new IllegalArgumentException("media not found")
+        );
 
-        if (!current.getCreatorId().equals(requesterId)) throw new SecurityException("forbidden: not the creator");
+        if (!current.getCreatorId().equals(requesterId)) {
+            throw new SecurityException("forbidden: not the creator");
+        }
 
         current.setTitle(safeTrim(req.getTitle()));
         current.setDescription(req.getDescription());
@@ -72,7 +86,9 @@ public class MediaService {
         current.setAgeRestriction(req.getAgeRestriction());
         current.setUpdatedAt(Instant.now());
 
-        if (!repo.update(current)) throw new IllegalStateException("update failed");
+        if (!repo.update(current)) {
+            throw new IllegalStateException("update failed");
+        }
         return toResponse(current);
     }
 
@@ -94,26 +110,57 @@ public class MediaService {
 
 
     public List<MediaResponse> search(MediaSearch s) {
-        if (s == null) s = new MediaSearch(null, null, null, null, null, null, "title", "asc", 20, 0);
+        if (s == null) {
+            s = new MediaSearch(
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "title",
+                    "asc",
+                    20,
+                    0
+            );
+        }
         List<MediaEntry> list = repo.search(s);
         List<MediaResponse> out = new ArrayList<>();
-        for (MediaEntry e : list) out.add(toResponse(e));
+        for (MediaEntry e : list) {
+            out.add(toResponse(e));
+        }
         return out;
     }
 
     private void validateRequest(MediaRequest req) {
-        if (req == null) throw new IllegalArgumentException("request null");
-        if (req.getTitle() == null || req.getTitle().trim().isEmpty()) throw new IllegalArgumentException("title blank");
+        if (req == null){
+            throw new IllegalArgumentException("request null");
+        }
+
+        if (req.getTitle() == null || req.getTitle().trim().isEmpty()){
+            throw new IllegalArgumentException("title blank");
+        }
+
         MediaType mt = req.getMediaType();
-        if (mt == null) throw new IllegalArgumentException("mediaType null");
+        if (mt == null){
+            throw new IllegalArgumentException("mediaType null");
+        }
+
         Integer year = req.getReleaseYear();
-        if (year != null && (year < 1888 || year > 2100)) throw new IllegalArgumentException("releaseYear out of range");
+        if (year != null && (year < 1888 || year > 2100)){
+            throw new IllegalArgumentException("releaseYear out of range");
+        }
+
         Integer age = req.getAgeRestriction();
-        if (age != null && (age < 0 || age > 21)) throw new IllegalArgumentException("ageRestriction out of range");
+        if (age != null && (age < 0 || age > 21)){
+            throw new IllegalArgumentException("ageRestriction out of range");
+        }
     }
 
     private String safeTrim(String s) {
-        if (s == null) return null;
+        if (s == null){
+            return null;
+        }
         String t = s.trim();
         return t.isEmpty() ? null : t;
     }
@@ -124,5 +171,6 @@ public class MediaService {
                 e.getMediaType(), e.getReleaseYear(), e.getGenres(), e.getAgeRestriction(),
                 e.getAverageScore(), e.getCreatedAt(), e.getUpdatedAt()
         );
+
     }
 }
