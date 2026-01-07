@@ -36,6 +36,75 @@ class UserServiceTest {
         service = new UserService(users, tokens, ratings, passwordHasher);
     }
 
+
+    /**
+     * REGISTER
+     */
+    @Test
+    void register_success() {
+        String username = "alice";
+        String rawPassword = "secret";
+        String hashedPassword = "hashed-secret";
+
+        User createdUser = Mockito.mock(User.class);
+
+        Mockito.when(users.findByUsername(username)).thenReturn(Optional.empty());
+
+        Mockito.when(passwordHasher.hash(rawPassword)).thenReturn(hashedPassword);
+
+        Mockito.when(users.create(username, hashedPassword)).thenReturn(createdUser);
+
+        User result =  service.register(username, rawPassword);
+
+        assertSame(createdUser, result);
+
+        Mockito.verify(passwordHasher).hash(rawPassword);
+
+        Mockito.verify(users).create(username, hashedPassword);
+    }
+
+    @Test
+    void register_usernameAlreadyTaken_throwsException(){
+        String username = "Wen";
+        String rawPassword = "secret";
+
+        User existingUser = Mockito.mock(User.class);
+
+        Mockito.when(users.findByUsername(username)).thenReturn(Optional.of(existingUser));
+
+        assertThrows(IllegalStateException.class,() ->
+                service.register(username, rawPassword)
+        );
+
+        Mockito.verify(users,  Mockito.never()).create(Mockito.anyString(), Mockito.anyString());
+        Mockito.verify(passwordHasher,  Mockito.never()).hash(Mockito.anyString());
+    }
+
+    /**
+     * LOGIN
+     */
+
+    @Test
+    void login_wrongPassword_throwsSecurityException() {
+        String username = "alice";
+        String rawPassword = "wrongPassword";
+        String storedHash = "correct-hash";
+
+        UUID userId = UUID.randomUUID();
+        User user = Mockito.mock(User.class);
+
+        Mockito.when(user.getId()).thenReturn(userId);
+        Mockito.when(user.getUsername()).thenReturn(username);
+        Mockito.when(user.getPasswordHash()).thenReturn(storedHash);
+
+        Mockito.when(users.findByUsername(username)).thenReturn(Optional.of(user));
+        Mockito.when(passwordHasher.matches(rawPassword, storedHash)).thenReturn(false);
+
+            assertThrows(SecurityException.class, () ->
+                    service.login(username, rawPassword)
+            );
+    }
+
     @Test
     void login_success_returnsToken() {
         String username = "alice";
@@ -61,8 +130,19 @@ class UserServiceTest {
         Mockito.verify(tokens).issueToken(userId, username);
     }
 
+    @Test
+    void login_blankPassword_throws_IllegalArgumentException(){
+        String username = "alice";
+        String blankPassword = "";
 
-    // Test for stats functionality
+        assertThrows(IllegalArgumentException.class, () ->
+                service.login(username, blankPassword)
+        );
+    }
+
+    /**
+     * USER STATS
+     */
     @Test
     void getUserRatingStats_noRatings_returnsZeroAndZeroAvg() {
         UUID userId = UUID.randomUUID();
@@ -90,5 +170,21 @@ class UserServiceTest {
 
         assertEquals(2, stats.totalRatings);
         assertEquals(4.0, stats.averageScore, 0.000001);
+    }
+
+    /**
+     * OTHER
+     */
+    @Test
+    void getProfile_userNotFound_throwsIllegalArgumentException() {
+
+        UUID id = UUID.randomUUID();
+
+        IllegalArgumentException e =
+                assertThrows(IllegalArgumentException.class,
+                        () -> service.getProfile(id)
+                );
+
+        assertEquals("user not found", e.getMessage());
     }
 }
