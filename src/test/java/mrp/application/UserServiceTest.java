@@ -43,7 +43,7 @@ class UserServiceTest {
      */
 
     @Nested
-    class RegisterTests {
+    class UserRegisterTests {
         @Test
         void register_success() {
             String username = "alice";
@@ -89,7 +89,7 @@ class UserServiceTest {
      */
 
     @Nested
-    class LoginTests {
+    class UserLoginTests {
         @Test
         void login_wrongPassword_throwsSecurityException() {
             String username = "alice";
@@ -186,7 +186,7 @@ class UserServiceTest {
      * OTHER
      */
     @Nested
-    class OtherTests {
+    class OtherUserTests {
         @Test
         void getProfile_userNotFound_throwsIllegalArgumentException() {
 

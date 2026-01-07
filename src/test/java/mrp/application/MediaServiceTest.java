@@ -49,13 +49,15 @@ class MediaServiceTest {
                 Instant.parse("2025-01-01T10:00:00Z")
         );
     }
+
+
     /**
      * CREATE
      */
 
 
     @Nested
-    class CreateTests {
+    class CreateMediaTests {
 
         @Test
         void create_nullCreatorId_throwsIllegalArgumentException() {
@@ -190,7 +192,7 @@ class MediaServiceTest {
 
 
     @Nested
-    class GetTests{
+    class GetMediaTests{
     @Test
     void get_nullId_throwsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () ->
@@ -262,7 +264,7 @@ class MediaServiceTest {
      */
 
     @Nested
-    class UpdateTests {
+    class UpdateMediaTests {
         @Test
         void update_requesterNotCreator_throwsSecurityException() {
             UUID id = UUID.randomUUID();
@@ -377,7 +379,7 @@ class MediaServiceTest {
      */
 
     @Nested
-    class DeleteTests {
+    class DeleteMediaTests {
         @Test
         void delete_requesterIdNull_throwsIllegalArgumentException() {
             UUID id = UUID.randomUUID();
@@ -417,7 +419,7 @@ class MediaServiceTest {
      */
 
     @Nested
-    class SearchTests {
+    class SearchMediaTests {
 
         @Test
         void search_nullSearch_usesDefaultAndCallsRepoWithIt() {
