@@ -215,13 +215,19 @@ public class RecommendationService {
         Integer best = null;
 
         for (Rating r : history) {
-            if (r == null || r.getMediaId() == null) continue;
+            if (r == null || r.getMediaId() == null) {
+                continue;
+            }
 
             MediaEntry m = media.findById(r.getMediaId()).orElse(null);
-            if (m == null) continue;
+            if (m == null) {
+                continue;
+            }
 
             Integer age = m.getAgeRestriction();
-            if (age == null) continue;
+            if (age == null) {
+                continue;
+            }
 
             // konservativ: die kleinste bisher bewertete Altersfreigabe
             // nichts empfehlen, was "härter" ist als bisheriges Verhalten
