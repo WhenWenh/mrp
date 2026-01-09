@@ -5,18 +5,21 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class ConnectionFactory {
-    //PGPASSWORD="$POSTGRES_PASSWORD" psql -U mrp -d mrp
-    private static String url   = getenv("DB_URL", "jdbc:postgresql://localhost:5432/mrp");
-    private static String user  = getenv("DB_USER", "mrp");
-    private static String pass  = getenv("DB_PASSWORD", "mrp");
+
+    private static String url  = requireEnv("DB_URL");
+    private static String user = requireEnv("DB_USER");
+    private static String pass = requireEnv("DB_PASSWORD");
 
     public static Connection get() throws SQLException {
         return DriverManager.getConnection(url, user, pass);
     }
 
-    private static String getenv(String k, String def) {
+    private static String requireEnv(String k) {
         String v = System.getenv(k);
-        return (v == null || v.isBlank()) ? def : v;
+        if (v == null || v.isBlank()) {
+            throw new IllegalStateException("missing environment variable: " + k);
+        }
+        return v;
     }
 
     private ConnectionFactory() { }
