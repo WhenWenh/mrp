@@ -23,13 +23,13 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS sessions (
                                         jti UUID PRIMARY KEY,
                                         user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                                        token TEXT NOT NULL, -- Abgabe ok (Prod: nur Hash)
+                                        token TEXT NOT NULL,
                                         issued_at TIMESTAMPTZ NOT NULL,
                                         expires_at TIMESTAMPTZ NOT NULL,
                                         revoked BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-CREATE INDEX IF NOT EXISTS idx_sessions_user    ON sessions(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_user    ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 CREATE UNIQUE INDEX IF NOT EXISTS ux_sessions_token ON sessions(token);
 

@@ -2,7 +2,6 @@ package mrp.infrastructure.security;
 
 import mrp.domain.ports.AuthTokenService;
 import mrp.infrastructure.config.ConnectionFactory;
-//import com.github.f4b6a3.uuid.UuidCreator;
 import mrp.infrastructure.util.UUIDv7;
 
 import java.security.SecureRandom;
@@ -14,11 +13,9 @@ import java.util.UUID;
 
 public class OpaqueTokenService implements AuthTokenService {
 
-
-    //TODO: Wenn ein neuer Token generiert wird, vorab überprüfen, wenn ein aktuelles existiert update es
     private static final SecureRandom RNG = new SecureRandom();
     private static final Duration TTL = Duration.ofHours(
-            Long.parseLong(env("TOKEN_TTL_HOURS", "24"))
+            Long.parseLong(env("TOKEN_TTL_HOURS", "3"))
     );
 
     @Override
@@ -26,34 +23,31 @@ public class OpaqueTokenService implements AuthTokenService {
         if (userId == null) throw new IllegalArgumentException("userId null");
         if (username == null || username.isBlank()) throw new IllegalArgumentException("username blank");
 
-        String opaquePart = newOpaquePart();
-        String token = username + "-mrp" + opaquePart;
+        String token = username + "-mrp" + newOpaquePart();
 
         UUID jti = UUIDv7.randomUUID();
         Instant now = Instant.now();
         Instant exp = now.plus(TTL);
 
-        String cleanup = "DELETE FROM sessions WHERE user_id=? AND expires_at < ?";
-        String sql = "INSERT INTO sessions (jti, user_id, token, issued_at, expires_at, revoked) VALUES (?,?,?,?,?,FALSE)";
+        String upsert =
+                "INSERT INTO sessions (jti, user_id, token, issued_at, expires_at, revoked) " +
+                        "VALUES (?,?,?,?,?,FALSE) " +
+                        "ON CONFLICT (user_id) DO UPDATE SET " +
+                        "jti = EXCLUDED.jti, " +
+                        "token = EXCLUDED.token, " +
+                        "issued_at = EXCLUDED.issued_at, " +
+                        "expires_at = EXCLUDED.expires_at, " +
+                        "revoked = FALSE";
 
-        try (Connection c = ConnectionFactory.get()) {
+        try (Connection c = ConnectionFactory.get();
+             PreparedStatement ps = c.prepareStatement(upsert)) {
 
-            // B) abgelaufene Sessions dieses Users löschen
-            try (PreparedStatement ps = c.prepareStatement(cleanup)) {
-                ps.setObject(1, userId);
-                ps.setTimestamp(2, Timestamp.from(now));
-                ps.executeUpdate();
-            }
-
-            // neue Session anlegen
-            try (PreparedStatement ps = c.prepareStatement(sql)) {
-                ps.setObject(1, jti);
-                ps.setObject(2, userId);
-                ps.setString(3, token);
-                ps.setTimestamp(4, Timestamp.from(now));
-                ps.setTimestamp(5, Timestamp.from(exp));
-                ps.executeUpdate();
-            }
+            ps.setObject(1, jti);
+            ps.setObject(2, userId);
+            ps.setString(3, token);
+            ps.setTimestamp(4, Timestamp.from(now));
+            ps.setTimestamp(5, Timestamp.from(exp));
+            ps.executeUpdate();
 
         } catch (SQLException e) {
             throw new RuntimeException("persist session failed", e);
@@ -61,7 +55,6 @@ public class OpaqueTokenService implements AuthTokenService {
 
         return token;
     }
-
 
     @Override
     public UUID verifyAndGetUserId(String token) {
@@ -79,13 +72,9 @@ public class OpaqueTokenService implements AuthTokenService {
                 boolean revoked = rs.getBoolean("revoked");
                 Instant expiresAt = rs.getTimestamp("expires_at").toInstant();
 
-                //if (revoked) throw new IllegalArgumentException("token revoked");
-
-                if (Instant.now().isAfter(expiresAt)) {
-                    // abgelaufene Session entfernen
-                    deleteByToken(c, token);
+                if (revoked) throw new IllegalArgumentException("token revoked");
+                if (Instant.now().isAfter(expiresAt))
                     throw new IllegalArgumentException("token expired");
-                }
 
                 return (UUID) rs.getObject("user_id");
             }
@@ -95,24 +84,17 @@ public class OpaqueTokenService implements AuthTokenService {
         }
     }
 
-    private void deleteByToken(Connection c, String token) throws SQLException {
-        String del = "DELETE FROM sessions WHERE token=?";
-        try (PreparedStatement ps = c.prepareStatement(del)) {
-            ps.setString(1, token);
-            ps.executeUpdate();
-        }
-    }
-
-
-    // Optional: Logout-Unterstützung (kann außerhalb des Interfaces bleiben)
+    // Optional: Logout
     public void revoke(String token) {
         if (token == null || token.isBlank()) throw new IllegalArgumentException("token blank");
+
         String sql = "UPDATE sessions SET revoked=TRUE WHERE token=?";
         try (Connection c = ConnectionFactory.get();
              PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, token);
+
             int n = ps.executeUpdate();
             if (n == 0) throw new IllegalArgumentException("session not found");
+
         } catch (SQLException e) {
             throw new RuntimeException("revoke token failed", e);
         }
