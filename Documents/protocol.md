@@ -184,7 +184,6 @@ Die Unit-Tests konzentrieren sich auf die **Business-Logik der Application Servi
 - Fokus auf:
     - Validierung von Eingaben
     - Autorisierungslogik
-    - Geschäftsregeln (z. B. Sternebereich 1–5)
     - Ausschluss ungültiger Zustände
 
 
