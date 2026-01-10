@@ -3,7 +3,7 @@ package mrp.infrastructure.http;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import mrp.application.LeaderboardService;
-import mrp.domain.model.LeaderboardEntry;
+import mrp.dto.LeaderboardEntry;
 import mrp.dto.LeaderboardEntryResponse;
 import mrp.infrastructure.security.AuthService;
 

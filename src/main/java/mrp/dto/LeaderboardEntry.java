@@ -1,4 +1,4 @@
-package mrp.domain.model;
+package mrp.dto;
 
 import java.util.UUID;
 

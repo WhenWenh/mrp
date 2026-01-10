@@ -1,7 +1,7 @@
 package mrp.domain.ports;
 
 import mrp.domain.model.User;
-import mrp.domain.model.LeaderboardEntry;
+import mrp.dto.LeaderboardEntry;
 
 import java.util.List;
 import java.util.Optional;

@@ -4,7 +4,7 @@ import mrp.domain.model.User;
 import mrp.domain.ports.UserRepository;
 import mrp.infrastructure.config.ConnectionFactory;
 import mrp.infrastructure.util.UUIDv7;
-import mrp.domain.model.LeaderboardEntry;
+import mrp.dto.LeaderboardEntry;
 
 import java.util.ArrayList;
 import java.util.List;

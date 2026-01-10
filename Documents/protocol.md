@@ -1,201 +1,227 @@
-# Media Ratings Platform (MRP) – Detaillierter Entwicklungsbericht (Stand: 18.10.2025)
+# Media Rating Platform (MRP) – Entwicklungsprotokoll
 
-Dieses Dokument beschreibt die technischen Schritte, Architekturentscheidungen, Teststrategie, aufgetretene Probleme und den Zeitaufwand der Entwicklung des Projekts **MRP – Media Ratings Platform**.  
-Das System ist ein **Standalone-Java-REST-Server** (ohne Framework) mit **PostgreSQL-Persistenz** und **tokenbasierter Authentifizierung**.
+## 1. App-Design und Architektur
 
----
+### 1.1 Architekturentscheidungen
 
-## 1. Überblick & Zielsetzung
+Die Media Rating Platform wurde als **eigenständiger REST-HTTP-Server in Java** umgesetzt.  
+Es wurden **keine Frameworks wie Spring oder ASP.NET** verwendet, sondern ausschließlich Low-Level-HTTP (`com.sun.net.httpserver.HttpServer`), wie in der Aufgabenstellung gefordert.
 
-- **Ziel:** Entwicklung einer RESTful HTTP-API für Medienverwaltung und Benutzerinteraktion (Registrierung, Login, Bewertungen, Favoriten).  
-  Die API dient als Basis für mögliche Frontends (Web, Mobile, CLI).
-- **Sprache:** Java
-- **Frameworks:** Keine (nur Java SE + JDBC + JSON-Verarbeitung)
-- **Architekturprinzip:** Clean Architecture (Domain / Application / Infrastructure)
-- **Datenbank:** PostgreSQL (Docker-Container `mrp_db`)
-- **Authentifizierung:** Token-basiert mit `Authorization: Bearer <token>`
+Die Architektur orientiert sich an **Clean Architecture / Hexagonal Architecture**, um eine klare Trennung der Verantwortlichkeiten sicherzustellen.
 
----
-
-## 2. Beschreibung technischer Schritte & Architekturentscheidungen
-
-### 2.1 Architekturprinzip
-Die Implementierung folgt dem **Clean Architecture** / **Ports & Adapters** Ansatz:
-
-- **Domain Layer:** Enthält reine Geschäftslogik und Entitäten (`User`, `MediaEntry`, `Rating`, `MediaType`).  
-  Keine externen Abhängigkeiten.
-- **Application Layer:** Enthält die Use-Cases (z. B. `UserService` für Registrierung und Login).  
-  Kommuniziert nur über **Ports (Interfaces)** mit der Außenwelt.
-- **Infrastructure Layer:** Implementiert technische Details:
-    - `JdbcUserRepository` (DB-Zugriff via PreparedStatements)
-    - `OpaqueTokenService` (Token-Erzeugung/Verwaltung)
-    - `Router` + `UserHandler` (HTTP-Verarbeitung)
-    - `ConnectionFactory` (PostgreSQL-Connection)
-    - `AuthService` (Token-Prüfung)
-    - `UUIDv7` 
-
-**Gründe für diese Architektur:**
-- Minimale Abhängigkeiten (SOLID-Prinzipien eingehalten)
-- Austauschbarkeit von Infrastrukturkomponenten (z. B. DB- oder Auth-System)
-- Hohe Testbarkeit der Business-Logik
-- Keine Framework-Kopplung → leichtgewichtig und portabel
+Zentrale Entscheidungen:
+- Klare Trennung von Domain-, Application- und Infrastructure-Layer
+- Token-basierte Authentifizierung mit Bearer Tokens
+- PostgreSQL als persistente Datenbank (Docker-basiert)
+- Manuelle Dependency Injection über Konstruktoren
+- Verwendung von UUIDs als Identifikatoren
+- Keine OR-Mapping-Frameworks, sondern reines JDBC
 
 ---
 
-### 2.2 HTTP-Server
-- Eigene Implementierung über **Java HTTP-Handler (kein Spring, kein ASP)**.
-- `Router` leitet Anfragen anhand von Pfad und Methode an passende Handler weiter.
-- `UserHandler` verarbeitet z. B.:
-    - `POST /api/register`
-    - `POST /api/login`
-
-- **Content-Type / Accept / JSON** werden explizit behandelt.
-
----
-
-### 2.3 Persistenz & Sicherheit
-- Datenbank: PostgreSQL über JDBC (Docker-basiert)
-- Sicherung vor SQL-Injection durch **Prepared Statements**
-- Passwortsicherheit durch **`PasswordHasher` (SHA-256 / Salted Hashes)** - wird wahrscheinlich im VErlauf des Proektes noch angepasst.
-- Token-Authentifizierung über:
-    - `OpaqueTokenService`: generiert und prüft Tokens
-    - Ablaufzeit (TTL) via `Duration.ofHours(24)`
-    - Speicherung des Tokens in der DB mit User-Bezug (`user_id`, `issued_at`, `expires_at`)
-
----
-
-## 3. Unit-Test-Strategie und Begründung
-
-> Für die Zwischenabgabe war kein vollständiger Unit-Testumfang gefordert.
-
-
----
-
-## 4. Probleme & Lösungen während der Entwicklung
-
-| Problem | Ursache | Lösung |
-|----------|----------|--------|
-| **UUIDv7**-Implementierung erzeugte anfangs fehlerhafte Zeitbits | ByteBuffer-Packing unpräzise | Anpassung: timestamp nur teilweise in High-Bits integriert |
-| **Token-Ablaufzeit (TTL)** wurde nicht geprüft | Logikfehler in `AuthService` | Prüfung `if exp < now → 401` ergänzt |
-| **DB-Verbindung in Docker** nicht erreichbar | falsche Connection-URL / Port | Fix in `ConnectionFactory`: `jdbc:postgresql://localhost:5432/mrp` |
-| **PreparedStatement-Fehler** bei Insert | falsche Reihenfolge der Parameter | Statement angepasst & getestet |
-| **Login-Response (Token)** war zunächst reiner String | nicht kompatibel mit Postman-Test | Änderung: Rückgabe als JSON `{ "token": "..." }` |
-
----
-
-## 5. Geschätzter Zeitaufwand pro Hauptbereich
-
-| Teilbereich | Zeit (ca.) | Beschreibung |
-|--------------|------------|---------------|
-| Architektur-Entwurf / Projektaufbau | 6 h | Strukturierung in Domain, Application, Infrastructure |
-| UserService & Authentifizierung | 5 h | Registrierung, Login, Tokenlogik |
-| HTTP-Server & Routing | 4 h | Router, Handler, Request/Response |
-| PostgreSQL-Integration | 5 h | JDBC, ConnectionFactory, SQL-Schema |
-| Security (PasswordHasher, AuthService) | 3 h | Hashing, Headerprüfung |
-| Testing & Postman-Setup | 2 h | Postman-Collection, manuelle Tests |
-| Dokumentation & Cleanup | 2 h | README, Protokoll, UML |
-| **Gesamt** | **27 Stunden** | – |
-
----
-
-## 6. Git-History als Entwicklungsnachweis
-
-Die Git-History wurde nicht ausreichend dokumentiert - dies wird sich im Verlauf bis zur finalen Abgabe durch regelmäßige Commits ändern und soll dann die iterative Entwicklung des Projekts darstellung:
-
-
----
-
-## 7. Postman-Collection (Integrationstest)
-
-
-### 7.1 Registrierung
-- `POST /api/register`
-- **Request (JSON)**:
-  ```json
-  { "username": "alice", "password": "secret" }
-  ```
-- **Responses**:
-    - `201 Created` mit einfacher User-Repräsentation (ohne Passworthash).
-    - `400 Bad Request` bei ungültigen Eingaben (z.B. leerer Username oder Passwort).
-    - `409 Conflict` bei bereits vorhandenem Username.
-
-### 7.2 Login
-- `POST /api/login`
-- **Request (JSON)**:
-  ```json
-  { "username": "alice", "password": "secret" }
-  ```
-- **Responses**:
-    - `200 OK` mit Token-String (Body).
-    - `400 Bad Request` bei ungültigen Eingaben (z.B. leerer Username oder Passwort).
-    - `401 Unauthorized` bei falschen Credentials.
-
-
-> Hinweis: Weitere Endpunkte (Media CRUD, Ratings, Favorites, Leaderboard, Suche/Filter/Sort) folgen in der Final-Abgabe.
-
----
-## 8. Projektstruktur (Kurzüberblick)
-
+### 1.2 Projektstruktur
 ```
 application/
- ├── security/
- │    └── PasswordHasher.java
- └── UserService.java
+├── security/
+│    └── PasswordHasher.java
+├── UserService.java
+├── MediaService.java
+├── RatingService.java
+├── FavoriteService.java
+├── LeaderboardService.java
+└── RecommendationService.java
 
 domain/
- ├── model/
- │    ├── enums/
- │    │    └── MediaType.java
- │    ├── MediaEntry.java
- │    ├── Rating.java
- │    └── User.java
- ├── ports/
- │    ├── AuthTokenService.java
- │    ├── MediaRepository.java
- │    ├── RatingRepository.java
- │    └── UserRepository.java
- └── dto/
-      ├── TokenResponse.java
-      ├── UserCredentials.java
-      └── UserResponse.java
+├── model/
+│    ├── User.java
+│    ├── MediaEntry.java
+│    ├── Rating.java
+│    └── enums/
+│         └── MediaType.java
+└── ports/
+     ├── UserRepository.java
+     ├── MediaRepository.java
+     ├── MediaSearch.java
+     ├── RatingRepository.java
+     ├── FavoriteRepository.java
+     └── AuthTokenService.java
+
+ dto/
+├── ApiErrorResponse.java
+├── LeaderboardEntry.java
+├── LeaderboardEntryResponse.java
+├── UserCredentials.java
+├── UserResponse.java
+├── UserRatingStas.java
+├── UserProfileUpdate.java
+├── MediaRequest.java
+├── MediaResponse.java
+├── RatingRequest.java
+├── RatingResponse.java
+└── TokenResponse.java
 
 infrastructure/
- ├── config/
- │    └── ConnectionFactory.java
- ├── http/
- │    ├── RouteHandler.java
- │    ├── Router.java
- │    └── UserHandler.java
- ├── persistence/
- │    └── JdbcUserRepository.java
- ├── security/
- │    ├── AuthService.java
- │    └── OpaqueTokenService.java
- └── util/
-      └── UUIDv7.java
+├── http/
+│    ├── AppFactory.java
+│    ├── HttpResponses.java
+│    ├── Routes.java
+│    ├── Router.java
+│    ├── RouteHandler.java
+│    ├── UserHandler.java
+│    ├── MediaHandler.java
+│    ├── RatingHandler.java
+│    ├── FavoriteHandler.
+│    ├── LeaderboardHandler.java
+│    └── RecommendationHandler.java
+├── persistence/
+│    ├── JdbcUserRepository.java
+│    ├── JdbcMediaRepository.java
+│    ├── JdbcRatingRepository.java
+│    └── JdbcFavoriteRepository.java
+├── security/
+│    ├── AuthService.java
+│    └── OpaqueTokenService.java
+└── config/
+│    └── ConnectionFactory.java
+
+util/
+└── UUIDv7.java
 
 Main.java
-resources/
 ```
 
 
 ---
 
-## 9. Repository
+### 1.3 Klassendesign (Überblick)
 
-- **GitHub:** [https://github.com/WhenWenh/mrp](https://github.com/WhenWenh/mrp)
-### 9.1 Versionierung
-- Zwischenabgabe 1: Git Tag `v1.0-intermediate`.
-- Aktive Entwicklung: Branch `develop`.
+**Domain-Modelle**
+- `User`: Benutzerinformationen und Statistiken
+- `MediaEntry`: Filme, Serien und Spiele
+- `Rating`: Bewertung eines Mediums inkl. Moderationsstatus
+
+**DTOs (Data Transfer Objects)**
+
+- `ApiErrorResponse`  
+  Einheitliches DTO zur Rückgabe von Fehlermeldungen im HTTP-Layer.
+  Enthält Statuscode und Fehlermeldung und wird ausschließlich für Fehlerantworten verwendet.
+
+- `LeaderboardEntry`  
+  DTO zur Darstellung eines einzelnen Eintrags in der öffentlichen Bestenliste.
+  Enthält aggregierte, berechnete Benutzerdaten (z. B. Benutzername und Anzahl der Bewertungen).
+
+- `LeaderboardEntryResponse`  
+  Wrapper-DTO zur Rückgabe einer Liste von `LeaderboardEntry`-Objekten über die HTTP-API.
+
+- `MediaRequest`  
+  Enthält die Eingabedaten zum Erstellen oder Aktualisieren eines Media-Eintrags.
+
+- `MediaResponse`  
+  DTO zur Ausgabe eines Media-Eintrags inklusive aggregierter Informationen
+  (z. B. durchschnittliche Bewertung).
+
+- `RatingRequest`  
+  Enthält die Eingabedaten zum Erstellen oder Aktualisieren einer Bewertung.
+
+- `RatingResponse`  
+  DTO zur Ausgabe einer Bewertung inklusive Metadaten (z. B. Likes, Sichtbarkeit des Kommentars).
+
+- `TokenResponse`  
+  DTO zur Rückgabe des Authentifizierungs-Tokens nach erfolgreichem Login.
+
+- `UserCredentials`  
+  DTO zur Übergabe von Benutzername und Passwort bei Registrierung und Login.
+
+- `UserProfileResponse`  
+  DTO zur Ausgabe des Benutzerprofils inklusive persönlicher Statistiken.
+
+- `UserProfileUpdate`  
+  DTO zur Übergabe von änderbaren Profildaten beim Aktualisieren des Benutzerprofils.
+
+- `UserRatingStats`  
+  DTO mit aggregierten Bewertungsstatistiken eines Benutzers
+  (z. B. Anzahl der Bewertungen, Durchschnittsbewertung).
+
+- `UserResponse`  
+  Allgemeines DTO zur Ausgabe von Benutzerdaten ohne sensible Informationen.
+
+
+**Application Services**
+- `UserService`: Registrierung, Login, Profil
+- `MediaService`: Erstellen, Bearbeiten und Löschen von Medien
+- `RatingService`: Validierung und Verwaltung von Bewertungen
+- `FavoriteService`: Favoritenlogik
+- `RecommendationService`: Empfehlungslogik basierend auf Bewertungen
+- `LeaderboardService`: Ermittlung der aktivsten Benutzer auf Basis der Anzahl ihrer Bewertungen
+
+**Infrastructure**
+- HTTP-Handler übernehmen die Request-/Response-Verarbeitung sowie das Routing
+- Repositories implementieren die Domain-Ports mittels JDBC und kapseln den Datenbankzugriff
+- Security-Komponenten prüfen Authentifizierung und Autorisierung über Bearer Tokens
+- Config-Komponenten stellen technische Konfigurationen wie Datenbankverbindungen bereit
+- Utility-Klassen enthalten technische Hilfsfunktionen ohne Geschäftslogik
+
 ---
 
-## 10. Ausblick auf Final-Abgabe
+## 2. Lessons Learned (Erkenntnisse)
 
-- Vollständige Implementierung von Media CRUD, Ratings, Likes, Favorites
-- Leaderboard (aktivste Nutzer)
-- Such- & Filterfunktionen (Genre, Jahr, Typ, Bewertung)
-- Empfehlungssystem (Genre- & Inhaltsähnlichkeit)
-- ≥ 20 Unit-Tests mit klarer Logikabdeckung
-- Verbesserte Fehlerbehandlung (HTTP 4xx/5xx Differenzierung)
+- Eine saubere Schichtenarchitektur vereinfacht Wartung und Tests erheblich
+- Der Verzicht auf Frameworks stärkt das Verständnis von HTTP, Routing und Security
+- Interfaces für Repositories ermöglichen einfaches Mocking
+- Empfehlungslogik sollte schrittweise entwickelt und gut getestet werden
+- SQL-UPserts vereinfachen Session- und Token-Verwaltung deutlich
 
 ---
+
+## 3. Unit-Testing-Strategie und Testabdeckung
+
+Die Unit-Tests konzentrieren sich auf die **Business-Logik der Application Services**.
+
+### Teststrategie:
+- **JUnit 5** für alle Unit-Tests
+- **Mockito** für das Mocken von Repositories
+- Keine Tests auf HTTP- oder Datenbank-Ebene
+- Fokus auf:
+    - Validierung von Eingaben
+    - Autorisierungslogik
+    - Geschäftsregeln (z. B. Sternebereich 1–5)
+    - Ausschluss ungültiger Zustände
+
+
+Die Testabdeckung stellt sicher, dass alle zentralen Use-Cases der Business-Logik überprüft sind.
+
+---
+
+## 4. SOLID-Prinzipien (mit Beispielen)
+
+### Single Responsibility Principle (SRP)
+
+Jede Klasse hat genau eine Verantwortung.
+
+**Beispiel:**
+- `RatingService` enthält ausschließlich Logik rund um Bewertungen
+- `AuthService` ist nur für Authentifizierung zuständig
+
+---
+
+### Dependency Inversion Principle (DIP)
+
+Application Services hängen von **Interfaces**, nicht von konkreten Implementierungen ab.
+
+**Beispiel:**
+- `MediaService` arbeitet mit `MediaRepository`
+- Die konkrete JDBC-Implementierung befindet sich im Infrastructure-Layer
+
+Dadurch sind Unit-Tests ohne Datenbank möglich.
+
+---
+
+## 5. Zeitaufwand (Tracked Time)
+- Arbeitszeit wurde nicht gemessen
+---
+
+## 6. Git Repository
+
+- origin  https://github.com/WhenWenh/mrp.git (fetch)
+- origin  https://github.com/WhenWenh/mrp.git (push)
+
