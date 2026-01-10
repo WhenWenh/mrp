@@ -8,6 +8,22 @@ import mrp.infrastructure.security.AuthService;
 import java.io.IOException;
 import java.util.UUID;
 
+/**
+ * Handles: GET /users/me/recommendations?limit=10
+ *
+ * Returns personalized recommendations for the currently authenticated user.
+ *
+ * Responsibilities:
+ * - authenticate the request and resolve the user ID from the token
+ * - parse and validate the optional "limit" query parameter
+ * - delegate the recommendation logic to RecommendationService
+ * - translate domain/application exceptions into HTTP responses
+ *
+ * Security:
+ * - only the authenticated user can access this endpoint
+ * - no userId is accepted from the client (derived from token instead)
+ */
+
 public class RecommendationHandler {
 
     private ObjectMapper mapper;
@@ -55,6 +71,9 @@ public class RecommendationHandler {
             return;
         }
 
+        // Query parameter parsing:
+        // Default recommendation limit is 10.
+        // If provided, the "limit" parameter must be a valid integer.
         int limit = 10;
         String q = ex.getRequestURI().getQuery();
         if (q != null) {

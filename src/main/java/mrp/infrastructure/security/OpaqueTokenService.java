@@ -101,9 +101,25 @@ public class OpaqueTokenService implements AuthTokenService {
     }
     */
 
+
+    /**
+     * Generates a new cryptographically strong opaque token part.
+     *
+     * Implementation details:
+     * - Uses a secure random number generator (RNG)
+     * - Generates 32 random bytes (256 bits of entropy)
+     * - Encodes the bytes using URL-safe Base64 without padding
+     *
+     * Result:
+     * - The returned string is safe to use in URLs and HTTP headers
+     * - The value is unpredictable and suitable for security tokens
+     */
     private static String newOpaquePart() {
+        // 32 bytes = 256 bits of randomness
         byte[] buf = new byte[32];
+        // Fill buffer with cryptographically secure random bytes
         RNG.nextBytes(buf);
+        // Encode as URL-safe Base64 string without padding
         return Base64.getUrlEncoder().withoutPadding().encodeToString(buf);
     }
 

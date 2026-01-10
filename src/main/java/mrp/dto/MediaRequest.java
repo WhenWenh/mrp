@@ -13,6 +13,18 @@ public class MediaRequest {
     private List<String> genres;
     private Integer ageRestriction;
 
+    /**
+     * Jackson uses this constructor to create a MediaRequest instance from JSON.
+     *
+     * @JsonCreator tells Jackson that this constructor should be used for deserialization.
+     * @JsonProperty maps JSON field names to constructor parameters explicitly.
+     *
+     * This is required because:
+     * - the class has no default (no-args) constructor
+     * - the class has no setters
+     * - field names in JSON must be bound to constructor arguments
+     */
+
     @JsonCreator
     public MediaRequest(
             @JsonProperty("title") String title,

@@ -14,6 +14,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Application service responsible for managing media entries.
+ * Handles creation, retrieval, update, deletion, and searching of media.
+ */
 
 public class MediaService {
 
@@ -60,6 +64,9 @@ public class MediaService {
         return toResponse(opt.get());
     }
 
+
+    // Updates an existing media entry.
+    // Only the creator of the media is allowed to update it.
     public MediaResponse update(UUID id, UUID requesterId, MediaRequest req) {
         if (id == null) {
             throw new IllegalArgumentException("id null");
@@ -108,7 +115,8 @@ public class MediaService {
         }
     }
 
-
+    // Searches for media entries using filter and sort criteria.
+    // If no search object is provided, default values are used.
     public List<MediaResponse> search(MediaSearch s) {
         if (s == null) {
             s = new MediaSearch(
@@ -132,6 +140,7 @@ public class MediaService {
         return out;
     }
 
+    // Validates a media request according to business rules.
     private void validateRequest(MediaRequest req) {
         if (req == null){
             throw new IllegalArgumentException("request null");
@@ -157,6 +166,8 @@ public class MediaService {
         }
     }
 
+    // Trims a string safely.
+    // Returns null if the trimmed result is empty.
     private String safeTrim(String s) {
         if (s == null){
             return null;
@@ -165,6 +176,7 @@ public class MediaService {
         return t.isEmpty() ? null : t;
     }
 
+    // Converts a MediaEntry domain object into a MediaResponse DTO.
     private MediaResponse toResponse(MediaEntry e) {
         return new MediaResponse(
                 e.getId(), e.getCreatorId(), e.getTitle(), e.getDescription(),

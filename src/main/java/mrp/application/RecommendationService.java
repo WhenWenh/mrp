@@ -16,6 +16,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Application service responsible for generating media recommendations for a user.
+ *
+ * Recommendation approach (high level):
+ * - Uses the user's rating history as preference signal
+ * - Only "highly rated" items (>= 4 stars) contribute to preferences
+ * - Excludes all already rated media (even 1-star ratings)
+ * - Builds candidates via repository search and ranks them by similarity score
+ */
+
 public class RecommendationService {
 
     private RatingRepository ratings;
@@ -29,24 +39,27 @@ public class RecommendationService {
     }
 
     /**
-     * Recommendations basierend auf:
-     * - Rating-History (NUR "highly rated": >= 4 Sterne zählen als Präferenzsignal)
-     * - Similarity: Genre-Overlap + MediaType Match (+ kleiner avg-score Bonus)
-     * - Ausschließen: bereits bewertete Medien (ALLE Bewertungen, auch 1 Stern)
+     * Returns recommendations for a user.
      *
-     * Wenn keine >=4 Sterne Ratings vorhanden sind => 200 + []
+     * Rules:
+     * - Preference signal comes only from ratings with stars >= 4
+     * - Candidates exclude ALL media the user has already rated
+     * - Similarity = genre overlap + media type match bonus + small avg-score bonus
+     * - If the user has no ratings >= 4, return an empty list (HTTP layer can still return 200)
      */
+
     public List<MediaResponse> recommendForUser(UUID userId, int limit) {
         if (userId == null) throw new IllegalArgumentException("userId null");
         if (limit <= 0) limit = 10;
         if (limit > 50) limit = 50;
 
+        // Load rating history. No history => no recommendations.
         List<Rating> history = ratings.listByUser(userId);
         if (history == null || history.isEmpty()) {
             return List.of();
         }
 
-        // Option A (streng): nur "highly rated" (>=4) zählen als Präferenzsignal
+        // Preference signal: only keep "positive" ratings (>= 4 stars).
         List<Rating> positive = new ArrayList<>();
         for (Rating r : history) {
             if (r == null) continue;
@@ -56,13 +69,14 @@ public class RecommendationService {
             return List.of(); // 200 + []
         }
 
-        // 1) ratedMediaIds: zum Ausschließen (ALLE Bewertungen)
+        // Exclusion set: all rated media IDs (including negative ratings).
         Set<UUID> ratedMediaIds = new HashSet<>();
         for (Rating r : history) {
             if (r != null && r.getMediaId() != null) ratedMediaIds.add(r.getMediaId());
         }
 
-        // 2) Präferenzen (Genre + Type) aus POSITIVER Rating-History, gewichtet nach Stars
+        // Build weighted preferences (genres + media type) from positive ratings.
+        // Weight by stars (4..5) to strengthen stronger likes.
         Map<String, Integer> genreWeights = new HashMap<>();
         Map<MediaType, Integer> typeWeights = new HashMap<>();
 
@@ -74,6 +88,7 @@ public class RecommendationService {
 
             int w = r.getStars(); // 4..5
 
+            // Collect genre weights
             List<String> genres = rated.getGenres();
             if (genres != null) {
                 for (String g : genres) {
@@ -84,23 +99,26 @@ public class RecommendationService {
                 }
             }
 
+            // Collect media type weights
             MediaType mt = rated.getMediaType();
             if (mt != null) {
                 typeWeights.put(mt, typeWeights.getOrDefault(mt, 0) + w);
             }
         }
 
+        // If no genre preferences could be derived, then the service cannot recommend reliably.
         if (genreWeights.isEmpty()) {
             return List.of();
         }
 
+        // Determine a single "preferred" media type (highest weight).
         MediaType preferredType = mostWeightedType(typeWeights);
         String preferredTypeStr = preferredType != null ? preferredType.name() : null;
 
-        // Age-Präferenz ebenfalls nur aus POSITIVEN Ratings ableiten
+        // Derive an age preference from positive ratings (used as a max filter).
         Integer preferredAge = preferredAgeMax(positive);
 
-        // 3) Kandidaten: hol gezielt pro Top-Genre aus der History
+        // Candidate generation: search for media per top genres (e.g., top 3).
         List<String> topGenres = topKeysByWeight(genreWeights, 3);
 
         Map<UUID, MediaEntry> candidatesById = new HashMap<>();
@@ -125,11 +143,11 @@ public class RecommendationService {
             for (MediaEntry e : found) {
                 if (e == null || e.getId() == null) continue;
                 if (ratedMediaIds.contains(e.getId())) continue; // exclude already rated (ALL)
-                candidatesById.putIfAbsent(e.getId(), e);
+                candidatesById.putIfAbsent(e.getId(), e);       // avoid duplicates across genres
             }
         }
 
-        // 4) Similarity-Scoring
+        // Score candidates by similarity and sort descending.
         List<ScoredMedia> scored = new ArrayList<>();
         for (MediaEntry c : candidatesById.values()) {
             double s = similarityScore(c, genreWeights, preferredType);
@@ -138,7 +156,7 @@ public class RecommendationService {
 
         scored.sort((a, b) -> Double.compare(b.score, a.score));
 
-        // 5) Limit + Output
+        // Limit and map to DTO responses.
         List<MediaResponse> out = new ArrayList<>();
         for (int i = 0; i < scored.size() && out.size() < limit; i++) {
             out.add(toResponse(scored.get(i).media));
@@ -147,10 +165,12 @@ public class RecommendationService {
     }
 
     /**
-     * Similarity:
-     * - Genre-Overlap (gewichteter Anteil) → 0..1
-     * - MediaType Match Bonus → +0.25
-     * - kleiner avg-score Bonus → max +0.1
+     * Computes a similarity score for a candidate media entry.
+     *
+     * Components:
+     * - Weighted genre overlap: matchedWeight / totalPreferenceWeight  -> 0..1
+     * - Media type match bonus: +0.25 if candidate type equals preferred type
+     * - Small quality bonus: avgScore/50 -> max +0.1 (since score max is 5)
      */
     private double similarityScore(MediaEntry candidate, Map<String, Integer> genreWeights, MediaType preferredType) {
         if (candidate == null) return 0.0;
@@ -178,7 +198,7 @@ public class RecommendationService {
             s += 0.25;
         }
 
-        // small quality bonus
+        // Small quality bonus based on candidate average score
         if (candidate.getAverageScore() != null) {
             s += Math.min(candidate.getAverageScore(), 5.0) / 50.0;
         }
@@ -186,6 +206,9 @@ public class RecommendationService {
         return s;
     }
 
+    /**
+     * Returns the top N keys from a weight map, sorted descending by weight.
+     */
     private List<String> topKeysByWeight(Map<String, Integer> weights, int n) {
         List<Map.Entry<String, Integer>> list = new ArrayList<>(weights.entrySet());
         list.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
@@ -197,6 +220,10 @@ public class RecommendationService {
         return out;
     }
 
+
+    /**
+     * Returns the MediaType with the highest accumulated weight.
+     */
     private MediaType mostWeightedType(Map<MediaType, Integer> typeWeights) {
         MediaType best = null;
         int bestW = -1;
@@ -211,6 +238,15 @@ public class RecommendationService {
         return best;
     }
 
+
+    /**
+     * Derives an age restriction preference from the user's positive history.
+     *
+     * Current strategy: conservative -> use the smallest age restriction the user positively rated.
+     * Meaning: do not recommend content that is "harsher" than what the user already liked.
+     *
+     * Note: An alternative (commented out) would be the maximum age restriction.
+     */
     private Integer preferredAgeMax(List<Rating> history) {
         Integer best = null;
 
@@ -229,13 +265,12 @@ public class RecommendationService {
                 continue;
             }
 
-            // konservativ: die kleinste bisher bewertete Altersfreigabe
-            // nichts empfehlen, was "härter" ist als bisheriges Verhalten
+            // Conservative: pick the smallest age restriction in the (positive) history
             if (best == null || age < best) {
                 best = age;
             }
 
-            // realistisch: größte bisher positiv bewertete Altersfreigabe
+            // Alternative (more permissive): maximum age restriction
             /*
             if (best == null || age > best) {
                 best = age;
@@ -247,6 +282,10 @@ public class RecommendationService {
         return best;
     }
 
+
+    /**
+     * Converts a MediaEntry domain object into a MediaResponse DTO.
+     */
     private MediaResponse toResponse(MediaEntry e) {
         return new MediaResponse(
                 e.getId(),

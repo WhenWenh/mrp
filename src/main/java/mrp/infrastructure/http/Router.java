@@ -59,7 +59,7 @@ public class Router {
             exchange.close();
         }
     }
-
+    /*
     public <T> T readJson(HttpExchange exchange, Class<T> type) throws IOException {
         InputStream in = exchange.getRequestBody();
         try {
@@ -86,7 +86,7 @@ public class Router {
         os.write(data);
         os.flush();
     }
-
+    */
     private class Route {
         String method;
         Pattern pattern;

@@ -13,6 +13,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Application service responsible for managing ratings.
+ * Handles creation, updates, deletion, likes, and comment visibility rules.
+ */
+
 public class RatingService {
 
     private RatingRepository ratings;
@@ -26,11 +31,13 @@ public class RatingService {
     }
 
     /**
-     * Legt ein neues Rating für ein Media an.
-     * - stars 1..5
-     * - Kommentar optional
-     * - commentConfirmed initial false
-     * - likeCount initial 0
+     * Creates a new rating for a media entry.
+     *
+     * Rules:
+     * - stars must be between 1 and 5
+     * - comment is optional
+     * - commentConfirmed is initially false
+     * - likeCount starts at 0
      */
     public RatingResponse create(UUID userId, UUID mediaId, RatingRequest req) {
         if (userId == null) throw new IllegalArgumentException("userId null");
@@ -53,24 +60,25 @@ public class RatingService {
 
         Rating saved = ratings.create(rating);
 
-        // Durchschnitt neu berechnen
+        // Recalculate average score of the media
         recalcAverageScore(media.getId());
 
-        // Für den Ersteller darf der (noch unbestätigte) Kommentar angezeigt werden
+        // The author can see their own unconfirmed comment
         return toResponse(saved, userId);
     }
 
     /**
-     * Liste aller Ratings zu einem Media.
-     * Kommentare:
-     * - wenn commentConfirmed=true → sichtbar für alle
-     * - wenn false → nur sichtbar für den Autor selbst
+     * Returns all ratings for a media entry.
+     *
+     * Comment visibility:
+     * - confirmed comments are visible to everyone
+     * - unconfirmed comments are only visible to the author
      */
     public List<RatingResponse> listForMedia(UUID mediaId, UUID requesterId) {
         if (mediaId == null) throw new IllegalArgumentException("mediaId null");
         if (requesterId == null) throw new IllegalArgumentException("requesterId null");
 
-        // Sicherstellen, dass Media existiert
+        // Ensure media exists
         mediaRepo.findById(mediaId)
                 .orElseThrow(() -> new IllegalArgumentException("media not found"));
 
@@ -83,8 +91,8 @@ public class RatingService {
     }
 
     /**
-     * Rating-Historie eines Users (für das eigene Profil).
-     * Hier sieht der User immer seinen vollen Kommentar.
+     * Returns the rating history of a user.
+     * The user can always see their full comments.
      */
     public List<RatingResponse> listForUser(UUID userId) {
         if (userId == null) throw new IllegalArgumentException("userId null");
@@ -97,7 +105,8 @@ public class RatingService {
     }
 
     /**
-     * Rating aktualisieren (nur vom Besitzer).
+     * Updates an existing rating.
+     * Only the author of the rating is allowed to update it.
      */
     public void update(UUID ratingId, UUID actorUserId, RatingRequest req) {
         if (ratingId == null) throw new IllegalArgumentException("ratingId null");
@@ -111,21 +120,22 @@ public class RatingService {
             throw new SecurityException("forbidden: not the author of rating");
         }
 
-        // Domain-Objekt aktualisieren
+        // Update domain object
         existing.setStars(req.getStars());
         existing.setComment(req.getComment());
-        // Kommentar wurde geändert → erneute Bestätigung nötig
+        // Comment must be re-confirmed after modification
         existing.setCommentConfirmed(false);
 
-        // Persistenz-Schicht updaten (Port ist aktuell noch "flach")
+        // Persist changes
         ratings.update(ratingId, actorUserId, existing.getStars(), existing.getComment());
 
-        // Durchschnitt neu berechnen
+        // Recalculate media average score
         recalcAverageScore(existing.getMediaId());
     }
 
     /**
-     * Rating löschen (nur vom Besitzer).
+     * Deletes a rating.
+     * Only the author of the rating may delete it.
      */
     public void delete(UUID ratingId, UUID actorUserId) {
         if (ratingId == null) throw new IllegalArgumentException("ratingId null");
@@ -140,7 +150,7 @@ public class RatingService {
 
         ratings.delete(ratingId, actorUserId);
 
-        // Durchschnitt neu berechnen
+        // Recalculate media average score
         recalcAverageScore(existing.getMediaId());
     }
 
@@ -150,11 +160,11 @@ public class RatingService {
         if (stars < 1 || stars > 5) {
             throw new IllegalArgumentException("stars must be 1..5");
         }
-        // Kommentar-Validierung übernimmt Domain (Rating.setComment)
+        // Comment validation is handled by the Rating domain object
     }
 
     /**
-     * Berechnet den Durchschnittsscore für ein Media neu und speichert ihn.
+     * Recalculates and persists the average score of a media entry.
      */
     private void recalcAverageScore(UUID mediaId) {
         List<Rating> list = ratings.listByMedia(mediaId);
@@ -176,6 +186,10 @@ public class RatingService {
         mediaRepo.update(media);
     }
 
+    /**
+     * Confirms the comment of a rating.
+     * Only the author of the rating may confirm it.
+     */
     public void confirmComment(UUID ratingId, UUID actorUserId) {
         if (ratingId == null) throw new IllegalArgumentException("ratingId null");
         if (actorUserId == null) throw new IllegalArgumentException("actorUserId null");
@@ -194,12 +208,15 @@ public class RatingService {
 
         boolean ok = ratings.confirmComment(ratingId, actorUserId);
         if (!ok) {
-            // sollte nach den Checks nicht passieren
+            // Should not happen after all checks
             throw new IllegalStateException("confirm failed");
         }
     }
 
-
+    /**
+     * Adds a like to a rating.
+     * Users are not allowed to like their own ratings.
+     */
     public void like(UUID ratingId, UUID actorUserId) {
         if (ratingId == null) throw new IllegalArgumentException("ratingId null");
         if (actorUserId == null) throw new IllegalArgumentException("actorUserId null");
@@ -211,10 +228,15 @@ public class RatingService {
 
         boolean ok = ratings.addLike(ratingId, actorUserId);
 
-        if (!ok) throw new IllegalStateException("already liked");
+        if (!ok) {
+            throw new IllegalStateException("already liked");
+        }
 
     }
 
+    /**
+     * Removes a like from a rating.
+     */
     public void unlike(UUID ratingId, UUID actorUserId) {
         if (ratingId == null) throw new IllegalArgumentException("ratingId null");
         if (actorUserId == null) throw new IllegalArgumentException("actorUserId null");
@@ -227,12 +249,14 @@ public class RatingService {
         }
 
         boolean ok = ratings.removeLike(ratingId, actorUserId);
-        if (!ok) throw new IllegalStateException("not liked");
+        if (!ok) {
+            throw new IllegalStateException("not liked");
+        }
     }
 
 
     /**
-     * Baut die Response auf Basis Sichtbarkeit des Kommentars.
+     * Builds a RatingResponse based on comment visibility rules.
      */
     private RatingResponse toResponse(Rating r, UUID requesterId) {
         boolean canSeeComment =

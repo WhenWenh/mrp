@@ -32,6 +32,7 @@ public class MediaHandler {
         this.resp = new HttpResponses(mapper);
     }
 
+    // POST /media
     public void create(HttpExchange ex) throws IOException {
         String ct = ex.getRequestHeaders().getFirst("Content-Type");
         if (ct == null || !ct.toLowerCase().contains("application/json")) {
@@ -63,6 +64,7 @@ public class MediaHandler {
         }
     }
 
+    // GET /media/{mediaId}
     public void getOne(HttpExchange ex, UUID id) throws IOException {
         try {
             auth.requireAuth(ex); // kann "token expired" werfen
@@ -84,6 +86,7 @@ public class MediaHandler {
         }
     }
 
+    //PUT /media/{mediaId}
     public void update(HttpExchange ex, UUID id) throws IOException {
         String ct = ex.getRequestHeaders().getFirst("Content-Type");
         if (ct == null || !ct.toLowerCase().contains("application/json")) {
@@ -124,6 +127,7 @@ public class MediaHandler {
         }
     }
 
+    // DELETE media/{mediaId}
     public void delete(HttpExchange ex, UUID id) throws IOException {
         try {
             UUID userId;
@@ -150,6 +154,7 @@ public class MediaHandler {
         }
     }
 
+    //GET media
     public void list(HttpExchange ex) throws IOException {
         try {
             auth.requireAuth(ex); // kann "token expired" werfen
@@ -181,7 +186,7 @@ public class MediaHandler {
         }
     }
 
-    // Mini Query-Helper (optional)
+    // Mini Query-Helper
     private static class Query {
         java.util.Map<String,String> m;
         static Query from(java.net.URI u) {

@@ -30,11 +30,14 @@ public class JdbcMediaRepository implements MediaRepository {
             ps.setString(3, e.getTitle());
             ps.setString(4, e.getDescription());
             ps.setString(5, e.getMediaType() != null ? e.getMediaType().name() : null);
-            if (e.getReleaseYear() == null) ps.setNull(6, Types.INTEGER); else ps.setInt(6, e.getReleaseYear());
+            if (e.getReleaseYear() == null) ps.setNull(6, Types.INTEGER);
+            else ps.setInt(6, e.getReleaseYear());
             if (e.getGenres() == null) ps.setNull(7, Types.ARRAY);
             else ps.setArray(7, c.createArrayOf("text", e.getGenres().toArray(new Object[0])));
-            if (e.getAgeRestriction() == null) ps.setNull(8, Types.INTEGER); else ps.setInt(8, e.getAgeRestriction());
-            if (e.getAverageScore() == null) ps.setNull(9, Types.DOUBLE); else ps.setDouble(9, e.getAverageScore());
+            if (e.getAgeRestriction() == null) ps.setNull(8, Types.INTEGER);
+            else ps.setInt(8, e.getAgeRestriction());
+            if (e.getAverageScore() == null) ps.setNull(9, Types.DOUBLE);
+            else ps.setDouble(9, e.getAverageScore());
             ps.setTimestamp(10, Timestamp.from(e.getCreatedAt() != null ? e.getCreatedAt() : Instant.now()));
             ps.setTimestamp(11, Timestamp.from(e.getUpdatedAt() != null ? e.getUpdatedAt() : Instant.now()));
             ps.executeUpdate();
@@ -70,11 +73,14 @@ public class JdbcMediaRepository implements MediaRepository {
             ps.setString(1, e.getTitle());
             ps.setString(2, e.getDescription());
             ps.setString(3, e.getMediaType() != null ? e.getMediaType().name() : null);
-            if (e.getReleaseYear() == null) ps.setNull(4, Types.INTEGER); else ps.setInt(4, e.getReleaseYear());
+            if (e.getReleaseYear() == null) ps.setNull(4, Types.INTEGER);
+            else ps.setInt(4, e.getReleaseYear());
             if (e.getGenres() == null) ps.setNull(5, Types.ARRAY);
             else ps.setArray(5, c.createArrayOf("text", e.getGenres().toArray(new Object[0])));
-            if (e.getAgeRestriction() == null) ps.setNull(6, Types.INTEGER); else ps.setInt(6, e.getAgeRestriction());
-            if (e.getAverageScore() == null) ps.setNull(7, Types.DOUBLE); else ps.setDouble(7, e.getAverageScore());
+            if (e.getAgeRestriction() == null) ps.setNull(6, Types.INTEGER);
+            else ps.setInt(6, e.getAgeRestriction());
+            if (e.getAverageScore() == null) ps.setNull(7, Types.DOUBLE);
+            else ps.setDouble(7, e.getAverageScore());
             ps.setTimestamp(8, Timestamp.from(e.getUpdatedAt() != null ? e.getUpdatedAt() : Instant.now()));
             ps.setObject(9, e.getId());
             return ps.executeUpdate() == 1;
@@ -144,7 +150,6 @@ public class JdbcMediaRepository implements MediaRepository {
             if ("title".equals(sbBy)) sortCol = "title";
             else if ("year".equals(sbBy)) sortCol = "release_year";
             else if ("score".equals(sbBy)) {
-                // TODO: falls deine Spalte nicht average_score heißt, hier anpassen:
                 sortCol = "average_score";
             }
         }
