@@ -84,7 +84,7 @@ public class OpaqueTokenService implements AuthTokenService {
         }
     }
 
-    // Optional: Logout
+    /*
     public void revoke(String token) {
         if (token == null || token.isBlank()) throw new IllegalArgumentException("token blank");
 
@@ -99,6 +99,7 @@ public class OpaqueTokenService implements AuthTokenService {
             throw new RuntimeException("revoke token failed", e);
         }
     }
+    */
 
     private static String newOpaquePart() {
         byte[] buf = new byte[32];

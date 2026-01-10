@@ -9,6 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Application service responsible for managing user favorites.
+ * Coordinates between FavoriteRepository and MediaRepository.
+ */
+
 public class FavoriteService {
     private FavoriteRepository favorites;
     private MediaRepository media;
@@ -20,14 +25,15 @@ public class FavoriteService {
         this.media = media;
     }
 
+    // Adds a media entry to the user's favorites.
+    // The operation is idempotent: adding an already favorited media is allowed.
     public void add(UUID userId, UUID mediaId) {
         if (userId == null) throw new IllegalArgumentException("userId null");
         if (mediaId == null) throw new IllegalArgumentException("mediaId null");
 
-        // 404 sauber abbildbar: Media muss existieren
         media.findById(mediaId).orElseThrow(() -> new IllegalArgumentException("media not found"));
 
-        favorites.add(userId, mediaId); // wenn schon da: OK (idempotent)
+        favorites.add(userId, mediaId); // Idempotent operation: repository may ignore duplicates
     }
 
     public void remove(UUID userId, UUID mediaId) {
@@ -39,6 +45,8 @@ public class FavoriteService {
         favorites.remove(userId, mediaId);
     }
 
+    // Returns all favorite media entries of a user.
+    // Missing or deleted media entries are silently ignored.
     public List<MediaResponse> listMine(UUID userId) {
         if (userId == null) throw new IllegalArgumentException("userId null");
 

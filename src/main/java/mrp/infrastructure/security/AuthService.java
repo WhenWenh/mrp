@@ -38,12 +38,13 @@ public class AuthService {
         return tokens.verifyAndGetUserId(token);
     }
 
+    /*
     public void revokeFromAuthHeader(String header) {
         if (!(tokens instanceof OpaqueTokenService)) return; // no-op für andere Implementierungen
         String token = extractBearer(header);
         ((OpaqueTokenService) tokens).revoke(token);
     }
-
+    */
     // ---- Helper ----
 
     private String extractBearer(String authHeader) {
