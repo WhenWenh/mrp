@@ -1,5 +1,28 @@
 # Media Rating Platform (MRP) – Entwicklungsprotokoll
 
+### Hinweis zur Konfiguration über `.env`
+
+Der Abgabe-ZIP liegt eine `.env`-Datei bei. Diese wird von `docker-compose` benötigt und enthält alle notwendigen Konfigurationswerte (z. B. Datenbank-Zugangsdaten).
+
+Zusätzlich müssen die in der `.env` definierten Variablen in der lokalen Entwicklungsumgebung als **Environment Variables** für die Anwendung gesetzt werden  
+(z. B. Run Configuration `mrp.main` → *Environment variables*).
+
+Die Werte können direkt aus der `.env`-Datei übernommen werden.
+
+### Hinweis zur Nutzung der Postman-Collection
+
+Die Datenbank ist bei einem frischen Start leer.  
+Vor der Nutzung weiterer Endpunkte muss daher zunächst ein Benutzer angelegt werden.
+
+Vorgehen:
+1. In der Postman-Collection den Ordner **`User`** öffnen.
+2. Den Request **`Register User`** ausführen, um einen neuen Benutzer zu registrieren.
+3. Anschließend den Request **`Login User`** ausführen und das zurückgegebene Token verwenden.
+4. Das Token muss bei allen weiteren Requests im `Authorization`-Header als  
+   `Bearer <token>` gesetzt werden.
+
+Erst nach erfolgreicher Registrierung und Anmeldung funktionieren die übrigen Endpunkte
+
 ## 1. App-Design und Architektur
 
 ### 1.1 Architekturentscheidungen
