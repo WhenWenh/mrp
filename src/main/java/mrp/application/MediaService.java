@@ -164,6 +164,10 @@ public class MediaService {
         if (age != null && (age < 0 || age > 21)){
             throw new IllegalArgumentException("ageRestriction out of range");
         }
+
+        if (age == null){
+            throw new IllegalArgumentException("age null");
+        }
     }
 
     // Trims a string safely.

@@ -266,16 +266,17 @@ public class RecommendationService {
             }
 
             // Conservative: pick the smallest age restriction in the (positive) history
+            /*
             if (best == null || age < best) {
                 best = age;
             }
+            */
 
             // Alternative (more permissive): maximum age restriction
-            /*
             if (best == null || age > best) {
                 best = age;
             }
-            */
+
 
         }
 
